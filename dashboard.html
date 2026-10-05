@@ -34,11 +34,12 @@
 
             <!-- STEP 3: Add Member Form (No Password Field) -->
             <div id="add-member-view" style="display: none; flex-direction: column; gap: 12px;">
-                <h3 style="margin: 0; font-size: 18px; text-align: center;">Create New Member Account</h3>
-                <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.7);">A link will be sent to their email to create their password.</p>
-                <input type="text" id="new-name" placeholder="Member Name" style="padding: 12px; font-size: 15px;">
-                <input type="email" id="new-email" placeholder="Member Gmail / Email" style="padding: 12px; font-size: 15px;">
+                <h3 style="margin: 0; font-size: 18px; text-align: center;">Add New Member Account</h3>
+                <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);">An invitation link will be sent to their email to create a password.</p>
                 
+                <input type="text" id="new-name" placeholder="Member Full Name" style="padding: 12px; font-size: 15px;">
+                <input type="email" id="new-email" placeholder="Member Gmail / Email" style="padding: 12px; font-size: 15px;">
+
                 <select id="new-role" style="padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 15px; outline: none; appearance: auto;">
                     <option value="admin" style="color: black;" selected>Rank: Admin (Default)</option>
                     <option value="head_admin" style="color: black;">Rank: Head Admin 👑</option>
@@ -83,7 +84,7 @@
                 <button id="back-from-presence-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
             </div>
 
-            <!-- STEP 7: Profile Data Form -->
+            <!-- STEP 7: Profile Data Form (With Optional Numbers-Only Phone) -->
             <div id="add-info-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 id="info-form-title" style="margin: 0; font-size: 18px; text-align: center;">Add Profile Data</h3>
                 <input type="text" id="info-name" placeholder="Full Name" style="padding: 12px; font-size: 15px;">
@@ -109,6 +110,7 @@
                 </div>
             </div>
 
+            <!-- Log Out button -->
             <button id="logout-btn" class="register-btn" style="position: absolute; bottom: 20px; right: 20px; width: auto; padding: 12px 22px; font-size: 15px;">Log Out</button>
         </div>
     </div>
@@ -726,7 +728,7 @@
 
         document.getElementById('search-input').addEventListener('input', applySearchFilter);
 
-        // --- ACCOUNT CREATION VIA EMAIL INVITATION ---
+        // Account Creation via Email Invitation
         document.getElementById('add-member-btn').addEventListener('click', async () => {
             const name = document.getElementById('new-name').value.trim();
             const email = document.getElementById('new-email').value.trim();
@@ -741,10 +743,8 @@
             addBtn.disabled = true;
             addBtn.innerText = 'Sending invitation...';
 
-            // Generate temporary secure password to initialize the account
-            const tempPassword = 'Init_' + Math.random().toString(36).slice(2) + '!' + Date.now();
+            const tempPassword = 'Temp_' + Math.random().toString(36).slice(2) + '!' + Date.now();
 
-            // 1. Create the account in Supabase
             const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: tempPassword,
@@ -763,8 +763,8 @@
                 return;
             }
 
-            // 2. Dispatch password creation link to their Gmail
-            const redirectUrl = window.location.origin + window.location.pathname.replace('dashboard.html', 'index.html');
+            // Direct route to GitHub Pages site
+            const redirectUrl = 'https://NotAnkit-dev.github.io/WEB/index.html';
             const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl
             });
@@ -775,7 +775,7 @@
             if (resetError) {
                 alert('Account registered, but email sending failed: ' + resetError.message);
             } else {
-                const roleLabel = role === 'head_admin' ? 'Head Admin' : 'Admin';
+                const roleLabel = role === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
                 alert(`Account created for ${name} (${roleLabel})!\nAn invitation email has been sent to ${email} with a direct link to set their password.`);
                 addMemberView.style.display = 'none';
                 mainView.style.display = 'flex';
