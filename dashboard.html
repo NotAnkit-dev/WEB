@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="login-background">
-        <div class="login-card" style="width: 620px; min-height: 480px; position: relative; padding-bottom: 70px;">
+        <div class="login-card" style="width: 640px; min-height: 480px; position: relative; padding-bottom: 70px;">
             <h2 style="font-size: 24px; margin-bottom: 5px;">Community Dashboard 🛡</h2>
             <p id="user-display" style="text-align: center; color: rgba(255,255,255,0.8); margin: 0 0 20px 0; font-size: 15px;">Loading user info...</p>
             
@@ -32,7 +32,7 @@
                 </div>
             </div>
 
-            <!-- STEP 3: Add Member Form (Invitation) -->
+            <!-- STEP 3: Add Member Form (Email Setup) -->
             <div id="add-member-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 style="margin: 0; font-size: 18px; text-align: center;">Add New Member Account</h3>
                 <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);">An invitation link will be sent to their email to create a password.</p>
@@ -84,7 +84,7 @@
                 <button id="back-from-presence-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
             </div>
 
-            <!-- STEP 7: Profile Data Form (Name, Email, Phone, Address REQUIRED) -->
+            <!-- STEP 7: Profile Data Form (All Fields Required) -->
             <div id="add-info-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 id="info-form-title" style="margin: 0; font-size: 18px; text-align: center;">Add Profile Data</h3>
                 <input type="text" id="info-name" placeholder="Full Name *" required style="padding: 12px; font-size: 15px;">
@@ -112,7 +112,6 @@
                 </div>
             </div>
 
-            <!-- Log Out button -->
             <button id="logout-btn" class="register-btn" style="position: absolute; bottom: 20px; right: 20px; width: auto; padding: 12px 22px; font-size: 15px;">Log Out</button>
         </div>
     </div>
@@ -357,7 +356,6 @@
             }
         });
 
-        // Save / Update Profile with Required Fields
         document.getElementById('save-info-btn').addEventListener('click', async () => {
             const name = document.getElementById('info-name').value.trim();
             const email = document.getElementById('info-email').value.trim();
@@ -469,7 +467,6 @@
                     ${workLine}
                 `;
 
-                // Actions bar with messaging buttons and admin controls
                 const actionsDiv = document.createElement('div');
                 actionsDiv.style.display = 'flex';
                 actionsDiv.style.flexWrap = 'wrap';
@@ -680,7 +677,6 @@
             }
         });
 
-        // Presence Status View for Head Admin
         async function loadPresenceStatus() {
             const container = document.getElementById('presence-list-container');
             const notice = document.getElementById('presence-rank-notice');
