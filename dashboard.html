@@ -32,13 +32,14 @@
                 </div>
             </div>
 
-            <!-- STEP 3: Add Member Form (Email Setup) -->
+            <!-- STEP 3: Add Member Form (With Direct Password Setup) -->
             <div id="add-member-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 style="margin: 0; font-size: 18px; text-align: center;">Add New Member Account</h3>
-                <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);">An invitation link will be sent to their email to create a password.</p>
+                <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);">Create member login credentials directly.</p>
                 
-                <input type="text" id="new-name" placeholder="Member Full Name" style="padding: 12px; font-size: 15px;">
-                <input type="email" id="new-email" placeholder="Member Gmail / Email" style="padding: 12px; font-size: 15px;">
+                <input type="text" id="new-name" placeholder="Member Full Name *" required style="padding: 12px; font-size: 15px;">
+                <input type="email" id="new-email" placeholder="Member Gmail / Email *" required style="padding: 12px; font-size: 15px;">
+                <input type="password" id="new-password" placeholder="Account Password (min 6 characters) *" required style="padding: 12px; font-size: 15px;">
 
                 <select id="new-role" style="padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 15px; outline: none; appearance: auto;">
                     <option value="admin" style="color: black;" selected>Rank: Admin (Default)</option>
@@ -46,7 +47,7 @@
                 </select>
 
                 <div class="button-group">
-                    <button id="add-member-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Send Invitation Link</button>
+                    <button id="add-member-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Create Member Account</button>
                     <button id="back-to-dash-btn" class="register-btn" style="padding: 14px; font-size: 16px;">Back</button>
                 </div>
             </div>
@@ -112,6 +113,7 @@
                 </div>
             </div>
 
+            <!-- Log Out Button -->
             <button id="logout-btn" class="register-btn" style="position: absolute; bottom: 20px; right: 20px; width: auto; padding: 12px 22px; font-size: 15px;">Log Out</button>
         </div>
     </div>
@@ -255,6 +257,7 @@
                 addMemberView.style.display = 'flex';
                 document.getElementById('new-name').value = '';
                 document.getElementById('new-email').value = '';
+                document.getElementById('new-password').value = '';
                 document.getElementById('new-role').value = 'admin';
             }, mainView, 'Enter Security Code to Add Member');
         });
@@ -356,6 +359,7 @@
             }
         });
 
+        // Save / Update Member Profile
         document.getElementById('save-info-btn').addEventListener('click', async () => {
             const name = document.getElementById('info-name').value.trim();
             const email = document.getElementById('info-email').value.trim();
@@ -624,26 +628,30 @@
 
         document.getElementById('search-input').addEventListener('input', applySearchFilter);
 
-        // Account Creation via Email Invitation
+        // Account Creation with Direct Password Setup
         document.getElementById('add-member-btn').addEventListener('click', async () => {
             const name = document.getElementById('new-name').value.trim();
             const email = document.getElementById('new-email').value.trim();
+            const password = document.getElementById('new-password').value;
             const role = document.getElementById('new-role').value;
 
-            if (!name || !email) {
-                alert('Please enter both name and email.');
+            if (!name || !email || !password) {
+                alert('Please fill out all fields: Name, Email, and Password.');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long.');
                 return;
             }
 
             const addBtn = document.getElementById('add-member-btn');
             addBtn.disabled = true;
-            addBtn.innerText = 'Sending invitation...';
-
-            const tempPassword = 'Temp_' + Math.random().toString(36).slice(2) + '!' + Date.now();
+            addBtn.innerText = 'Creating account...';
 
             const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
-                password: tempPassword,
+                password: password,
                 options: {
                     data: { 
                         display_name: name,
@@ -652,31 +660,25 @@
                 }
             });
 
+            addBtn.disabled = false;
+            addBtn.innerText = 'Create Member Account';
+
             if (error) {
                 alert('Error creating account: ' + error.message);
-                addBtn.disabled = false;
-                addBtn.innerText = 'Send Invitation Link';
                 return;
             }
 
-            const redirectUrl = 'https://NotAnkit-dev.github.io/WEB/index.html';
-            const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl
-            });
-
-            addBtn.disabled = false;
-            addBtn.innerText = 'Send Invitation Link';
-
-            if (resetError) {
-                alert('Account registered, but email sending failed: ' + resetError.message);
-            } else {
-                const roleLabel = role === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
-                alert(`Account created for ${name} (${roleLabel})!\nAn invitation email has been sent to ${email} with a direct link to set their password.`);
-                addMemberView.style.display = 'none';
-                mainView.style.display = 'flex';
-            }
+            const roleLabel = role === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
+            alert(`Account successfully created for ${name} (${roleLabel})!\nThey can now log in immediately with their email and password.`);
+            
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-email').value = '';
+            document.getElementById('new-password').value = '';
+            addMemberView.style.display = 'none';
+            mainView.style.display = 'flex';
         });
 
+        // Presence Status View for Head Admin
         async function loadPresenceStatus() {
             const container = document.getElementById('presence-list-container');
             const notice = document.getElementById('presence-rank-notice');
