@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="login-background">
-        <div class="login-card" style="width: 580px; min-height: 460px; position: relative; padding-bottom: 70px;">
+        <div class="login-card" style="width: 620px; min-height: 480px; position: relative; padding-bottom: 70px;">
             <h2 style="font-size: 24px; margin-bottom: 5px;">Community Dashboard 🛡</h2>
             <p id="user-display" style="text-align: center; color: rgba(255,255,255,0.8); margin: 0 0 20px 0; font-size: 15px;">Loading user info...</p>
             
@@ -32,7 +32,7 @@
                 </div>
             </div>
 
-            <!-- STEP 3: Add Member Form (No Password Field) -->
+            <!-- STEP 3: Add Member Form (Invitation) -->
             <div id="add-member-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 style="margin: 0; font-size: 18px; text-align: center;">Add New Member Account</h3>
                 <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);">An invitation link will be sent to their email to create a password.</p>
@@ -65,10 +65,10 @@
                 <input 
                     type="text" 
                     id="search-input" 
-                    placeholder="Search by name, address, phone, or status..." 
+                    placeholder="Search by name, email, phone, address, or status..." 
                     style="padding: 10px 14px; font-size: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); color: white; outline: none;"
                 >
-                <div id="member-list-container" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                <div id="member-list-container" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
                     <p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Loading records...</p>
                 </div>
                 <button id="back-from-directory-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
@@ -84,25 +84,27 @@
                 <button id="back-from-presence-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
             </div>
 
-            <!-- STEP 7: Profile Data Form (With Optional Numbers-Only Phone) -->
+            <!-- STEP 7: Profile Data Form (Name, Email, Phone, Address REQUIRED) -->
             <div id="add-info-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 id="info-form-title" style="margin: 0; font-size: 18px; text-align: center;">Add Profile Data</h3>
-                <input type="text" id="info-name" placeholder="Full Name" style="padding: 12px; font-size: 15px;">
-                <input type="text" id="info-address" placeholder="Home Address" style="padding: 12px; font-size: 15px;">
+                <input type="text" id="info-name" placeholder="Full Name *" required style="padding: 12px; font-size: 15px;">
+                <input type="email" id="info-email" placeholder="Email Address (Gmail) *" required style="padding: 12px; font-size: 15px;">
                 <input 
                     type="tel" 
                     id="info-phone" 
-                    placeholder="Phone Number (Optional)" 
-                    maxlength="15" 
+                    placeholder="Phone Number (Digits only, include country code) *" 
+                    maxlength="16" 
+                    required
                     oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
                     style="padding: 12px; font-size: 15px;"
                 >
+                <input type="text" id="info-address" placeholder="Home Address *" required style="padding: 12px; font-size: 15px;">
                 <select id="info-status" style="padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 15px; outline: none; appearance: auto;">
-                    <option value="" style="color: black;">Select Status...</option>
+                    <option value="" style="color: black;">Select Status... *</option>
                     <option value="Work" style="color: black;">Work</option>
                     <option value="Student" style="color: black;">Student</option>
                 </select>
-                <input type="text" id="info-work-details" placeholder="Workplace / Job Title" style="display: none; padding: 12px; font-size: 15px;">
+                <input type="text" id="info-work-details" placeholder="Workplace / Job Title *" style="display: none; padding: 12px; font-size: 15px;">
                 
                 <div class="button-group">
                     <button id="save-info-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Save Data</button>
@@ -326,8 +328,9 @@
                 peopleMenuView.style.display = 'none';
                 addInfoView.style.display = 'flex';
                 document.getElementById('info-name').value = '';
-                document.getElementById('info-address').value = '';
+                document.getElementById('info-email').value = '';
                 document.getElementById('info-phone').value = '';
+                document.getElementById('info-address').value = '';
                 document.getElementById('info-status').value = '';
                 document.getElementById('info-work-details').style.display = 'none';
                 document.getElementById('info-work-details').value = '';
@@ -354,6 +357,330 @@
             }
         });
 
+        // Save / Update Profile with Required Fields
+        document.getElementById('save-info-btn').addEventListener('click', async () => {
+            const name = document.getElementById('info-name').value.trim();
+            const email = document.getElementById('info-email').value.trim();
+            const phone = document.getElementById('info-phone').value.trim();
+            const address = document.getElementById('info-address').value.trim();
+            const status = document.getElementById('info-status').value;
+            const workDetails = document.getElementById('info-work-details').value.trim();
+
+            if (!name || !email || !phone || !address || !status) {
+                alert('All required fields must be completed: Name, Email, Phone, Address, and Status!');
+                return;
+            }
+
+            if (status === 'Work' && !workDetails) {
+                alert('Please enter your workplace or job title!');
+                return;
+            }
+
+            const recordData = { 
+                name: name, 
+                email: email,
+                phone: phone,
+                address: address, 
+                status: status, 
+                work_details: status === 'Work' ? workDetails : null 
+            };
+
+            if (editingMemberId !== null) {
+                const { error } = await supabaseClient
+                    .from('member_info')
+                    .update(recordData)
+                    .eq('id', editingMemberId);
+
+                if (error) {
+                    alert('Error updating record: ' + error.message);
+                } else {
+                    alert('Profile updated successfully for ' + name + '!');
+                    editingMemberId = null;
+                    addInfoView.style.display = 'none';
+                    directoryView.style.display = 'flex';
+                    await loadDirectory();
+                }
+            } else {
+                const { error } = await supabaseClient
+                    .from('member_info')
+                    .insert([recordData]);
+
+                if (error) {
+                    alert('Error saving record: ' + error.message);
+                } else {
+                    alert('Profile data saved successfully for ' + name + '!');
+                    addInfoView.style.display = 'none';
+                    peopleMenuView.style.display = 'flex';
+                }
+            }
+        });
+
+        async function loadDirectory() {
+            const container = document.getElementById('member-list-container');
+            container.innerHTML = `<p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Loading records...</p>`;
+
+            const { data, error } = await supabaseClient
+                .from('member_info')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p style="color: #ff6b6b; text-align: center; margin: 0;">Error loading: ${error.message}</p>`;
+                return;
+            }
+
+            cachedMembers = data || [];
+            applySearchFilter();
+        }
+
+        function renderDirectory(list) {
+            const container = document.getElementById('member-list-container');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.6); margin: 0;">No matching records found.</p>`;
+                return;
+            }
+
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.style.background = 'rgba(255, 255, 255, 0.1)';
+                card.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                card.style.borderRadius = '8px';
+                card.style.padding = '12px 14px';
+                card.style.display = 'flex';
+                card.style.flexDirection = 'column';
+                card.style.gap = '10px';
+
+                const workLine = item.status === 'Work' && item.work_details 
+                    ? `<div style="font-size: 13px; color: rgba(255,255,255,0.8);"><strong>Workplace:</strong> ${item.work_details}</div>` 
+                    : '';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.style.display = 'flex';
+                infoDiv.style.flexDirection = 'column';
+                infoDiv.style.gap = '3px';
+                infoDiv.innerHTML = `
+                    <div style="font-size: 16px; font-weight: bold; color: #00ffcc;">${item.name}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Email:</strong> ${item.email || 'N/A'}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Phone:</strong> ${item.phone || 'N/A'}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Address:</strong> ${item.address}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Status:</strong> ${item.status}</div>
+                    ${workLine}
+                `;
+
+                // Actions bar with messaging buttons and admin controls
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.flexWrap = 'wrap';
+                actionsDiv.style.gap = '6px';
+                actionsDiv.style.alignItems = 'center';
+
+                // WhatsApp Button
+                const waBtn = document.createElement('button');
+                waBtn.innerText = '💬 WhatsApp';
+                waBtn.style.background = 'rgba(37, 211, 102, 0.2)';
+                waBtn.style.color = '#25d366';
+                waBtn.style.border = '1px solid rgba(37, 211, 102, 0.4)';
+                waBtn.style.borderRadius = '6px';
+                waBtn.style.padding = '5px 9px';
+                waBtn.style.fontSize = '12px';
+                waBtn.style.fontWeight = 'bold';
+                waBtn.style.cursor = 'pointer';
+                waBtn.addEventListener('click', () => {
+                    const cleanPhone = (item.phone || '').replace(/[^0-9]/g, '');
+                    const text = encodeURIComponent(`Hello ${item.name}, this is a message from the Community Dashboard.`);
+                    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+                });
+
+                // SMS Button
+                const smsBtn = document.createElement('button');
+                smsBtn.innerText = '📱 SMS';
+                smsBtn.style.background = 'rgba(0, 198, 255, 0.2)';
+                smsBtn.style.color = '#00c6ff';
+                smsBtn.style.border = '1px solid rgba(0, 198, 255, 0.4)';
+                smsBtn.style.borderRadius = '6px';
+                smsBtn.style.padding = '5px 9px';
+                smsBtn.style.fontSize = '12px';
+                smsBtn.style.fontWeight = 'bold';
+                smsBtn.style.cursor = 'pointer';
+                smsBtn.addEventListener('click', () => {
+                    const cleanPhone = (item.phone || '').replace(/[^0-9]/g, '');
+                    const text = encodeURIComponent(`Hello ${item.name}, from Community Dashboard: `);
+                    window.location.href = `sms:${cleanPhone}?body=${text}`;
+                });
+
+                // Gmail Button
+                const gmailBtn = document.createElement('button');
+                gmailBtn.innerText = '✉️ Gmail';
+                gmailBtn.style.background = 'rgba(234, 67, 53, 0.2)';
+                gmailBtn.style.color = '#ea4335';
+                gmailBtn.style.border = '1px solid rgba(234, 67, 53, 0.4)';
+                gmailBtn.style.borderRadius = '6px';
+                gmailBtn.style.padding = '5px 9px';
+                gmailBtn.style.fontSize = '12px';
+                gmailBtn.style.fontWeight = 'bold';
+                gmailBtn.style.cursor = 'pointer';
+                gmailBtn.addEventListener('click', () => {
+                    const subject = encodeURIComponent('Community Dashboard Notification');
+                    const body = encodeURIComponent(`Hello ${item.name},\n\n`);
+                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(item.email)}&su=${subject}&body=${body}`, '_blank');
+                });
+
+                // Edit Button
+                const editBtn = document.createElement('button');
+                editBtn.innerText = 'Edit';
+                editBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+                editBtn.style.color = 'white';
+                editBtn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                editBtn.style.borderRadius = '6px';
+                editBtn.style.padding = '5px 9px';
+                editBtn.style.fontSize = '12px';
+                editBtn.style.fontWeight = 'bold';
+                editBtn.style.cursor = 'pointer';
+                editBtn.addEventListener('click', () => {
+                    editingMemberId = item.id;
+                    document.getElementById('info-form-title').innerText = 'Edit Profile Data';
+                    document.getElementById('save-info-btn').innerText = 'Update Data';
+
+                    document.getElementById('info-name').value = item.name || '';
+                    document.getElementById('info-email').value = item.email || '';
+                    document.getElementById('info-phone').value = item.phone || '';
+                    document.getElementById('info-address').value = item.address || '';
+                    document.getElementById('info-status').value = item.status || '';
+
+                    const workInput = document.getElementById('info-work-details');
+                    if (item.status === 'Work') {
+                        workInput.style.display = 'block';
+                        workInput.value = item.work_details || '';
+                    } else {
+                        workInput.style.display = 'none';
+                        workInput.value = '';
+                    }
+
+                    directoryView.style.display = 'none';
+                    addInfoView.style.display = 'flex';
+                });
+
+                // Delete Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerText = 'Delete';
+                deleteBtn.style.background = 'rgba(255, 75, 75, 0.25)';
+                deleteBtn.style.color = '#ff8080';
+                deleteBtn.style.border = '1px solid rgba(255, 75, 75, 0.4)';
+                deleteBtn.style.borderRadius = '6px';
+                deleteBtn.style.padding = '5px 9px';
+                deleteBtn.style.fontSize = '12px';
+                deleteBtn.style.fontWeight = 'bold';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.addEventListener('click', () => {
+                    const confirmed = confirm(`Are you sure you want to delete ${item.name}?`);
+                    if (!confirmed) return;
+
+                    requireSecurityCheck(async () => {
+                        directoryView.style.display = 'flex';
+                        const { error: delError } = await supabaseClient
+                            .from('member_info')
+                            .delete()
+                            .eq('id', item.id);
+
+                        if (delError) {
+                            alert('Error deleting profile: ' + delError.message);
+                        } else {
+                            cachedMembers = cachedMembers.filter(m => m.id !== item.id);
+                            applySearchFilter();
+                        }
+                    }, directoryView, 'Enter Code to Delete Member Profile');
+                });
+
+                actionsDiv.appendChild(waBtn);
+                actionsDiv.appendChild(smsBtn);
+                actionsDiv.appendChild(gmailBtn);
+                actionsDiv.appendChild(editBtn);
+                actionsDiv.appendChild(deleteBtn);
+
+                card.appendChild(infoDiv);
+                card.appendChild(actionsDiv);
+                container.appendChild(card);
+            });
+        }
+
+        function applySearchFilter() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            if (!query) {
+                renderDirectory(cachedMembers);
+                return;
+            }
+
+            const filtered = cachedMembers.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const email = (item.email || '').toLowerCase();
+                const phone = (item.phone || '').toLowerCase();
+                const address = (item.address || '').toLowerCase();
+                const status = (item.status || '').toLowerCase();
+                const workplace = (item.work_details || '').toLowerCase();
+                return name.includes(query) || email.includes(query) || phone.includes(query) || address.includes(query) || status.includes(query) || workplace.includes(query);
+            });
+
+            renderDirectory(filtered);
+        }
+
+        document.getElementById('search-input').addEventListener('input', applySearchFilter);
+
+        // Account Creation via Email Invitation
+        document.getElementById('add-member-btn').addEventListener('click', async () => {
+            const name = document.getElementById('new-name').value.trim();
+            const email = document.getElementById('new-email').value.trim();
+            const role = document.getElementById('new-role').value;
+
+            if (!name || !email) {
+                alert('Please enter both name and email.');
+                return;
+            }
+
+            const addBtn = document.getElementById('add-member-btn');
+            addBtn.disabled = true;
+            addBtn.innerText = 'Sending invitation...';
+
+            const tempPassword = 'Temp_' + Math.random().toString(36).slice(2) + '!' + Date.now();
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: tempPassword,
+                options: {
+                    data: { 
+                        display_name: name,
+                        role: role 
+                    }
+                }
+            });
+
+            if (error) {
+                alert('Error creating account: ' + error.message);
+                addBtn.disabled = false;
+                addBtn.innerText = 'Send Invitation Link';
+                return;
+            }
+
+            const redirectUrl = 'https://NotAnkit-dev.github.io/WEB/index.html';
+            const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl
+            });
+
+            addBtn.disabled = false;
+            addBtn.innerText = 'Send Invitation Link';
+
+            if (resetError) {
+                alert('Account registered, but email sending failed: ' + resetError.message);
+            } else {
+                const roleLabel = role === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
+                alert(`Account created for ${name} (${roleLabel})!\nAn invitation email has been sent to ${email} with a direct link to set their password.`);
+                addMemberView.style.display = 'none';
+                mainView.style.display = 'flex';
+            }
+        });
+
+        // Presence Status View for Head Admin
         async function loadPresenceStatus() {
             const container = document.getElementById('presence-list-container');
             const notice = document.getElementById('presence-rank-notice');
@@ -515,272 +842,6 @@
                 container.appendChild(row);
             });
         }
-
-        document.getElementById('save-info-btn').addEventListener('click', async () => {
-            const name = document.getElementById('info-name').value.trim();
-            const address = document.getElementById('info-address').value.trim();
-            const phone = document.getElementById('info-phone').value.trim();
-            const status = document.getElementById('info-status').value;
-            const workDetails = document.getElementById('info-work-details').value.trim();
-
-            if (!name || !address || !status) {
-                alert('Please fill out all visible required fields before saving!');
-                return;
-            }
-
-            if (status === 'Work' && !workDetails) {
-                alert('Please enter your workplace or job title!');
-                return;
-            }
-
-            const recordData = { 
-                name: name, 
-                address: address, 
-                phone: phone ? phone : null,
-                status: status, 
-                work_details: status === 'Work' ? workDetails : null 
-            };
-
-            if (editingMemberId !== null) {
-                const { error } = await supabaseClient
-                    .from('member_info')
-                    .update(recordData)
-                    .eq('id', editingMemberId);
-
-                if (error) {
-                    alert('Error updating record: ' + error.message);
-                } else {
-                    alert('Profile updated successfully for ' + name + '!');
-                    editingMemberId = null;
-                    addInfoView.style.display = 'none';
-                    directoryView.style.display = 'flex';
-                    await loadDirectory();
-                }
-            } else {
-                const { error } = await supabaseClient
-                    .from('member_info')
-                    .insert([recordData]);
-
-                if (error) {
-                    alert('Error saving record: ' + error.message);
-                } else {
-                    alert('Profile data saved successfully for ' + name + '!');
-                    addInfoView.style.display = 'none';
-                    peopleMenuView.style.display = 'flex';
-                }
-            }
-        });
-
-        async function loadDirectory() {
-            const container = document.getElementById('member-list-container');
-            container.innerHTML = `<p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Loading records...</p>`;
-
-            const { data, error } = await supabaseClient
-                .from('member_info')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                container.innerHTML = `<p style="color: #ff6b6b; text-align: center; margin: 0;">Error loading: ${error.message}</p>`;
-                return;
-            }
-
-            cachedMembers = data || [];
-            applySearchFilter();
-        }
-
-        function renderDirectory(list) {
-            const container = document.getElementById('member-list-container');
-            container.innerHTML = '';
-
-            if (list.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.6); margin: 0;">No matching records found.</p>`;
-                return;
-            }
-
-            list.forEach(item => {
-                const card = document.createElement('div');
-                card.style.background = 'rgba(255, 255, 255, 0.1)';
-                card.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                card.style.borderRadius = '8px';
-                card.style.padding = '10px 14px';
-                card.style.display = 'flex';
-                card.style.justifyContent = 'space-between';
-                card.style.alignItems = 'center';
-                card.style.gap = '10px';
-
-                const workLine = item.status === 'Work' && item.work_details 
-                    ? `<div style="font-size: 13px; color: rgba(255,255,255,0.8);"><strong>Workplace:</strong> ${item.work_details}</div>` 
-                    : '';
-
-                const phoneLine = item.phone 
-                    ? `<div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Phone:</strong> ${item.phone}</div>`
-                    : '';
-
-                const infoDiv = document.createElement('div');
-                infoDiv.style.display = 'flex';
-                infoDiv.style.flexDirection = 'column';
-                infoDiv.style.gap = '3px';
-                infoDiv.innerHTML = `
-                    <div style="font-size: 15px; font-weight: bold; color: #00ffcc;">${item.name}</div>
-                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Address:</strong> ${item.address}</div>
-                    ${phoneLine}
-                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Status:</strong> ${item.status}</div>
-                    ${workLine}
-                `;
-
-                const actionsDiv = document.createElement('div');
-                actionsDiv.style.display = 'flex';
-                actionsDiv.style.gap = '6px';
-                actionsDiv.style.flexShrink = '0';
-
-                const editBtn = document.createElement('button');
-                editBtn.innerText = 'Edit';
-                editBtn.style.background = 'rgba(0, 198, 255, 0.25)';
-                editBtn.style.color = '#70d6ff';
-                editBtn.style.border = '1px solid rgba(0, 198, 255, 0.4)';
-                editBtn.style.borderRadius = '6px';
-                editBtn.style.padding = '6px 12px';
-                editBtn.style.fontSize = '12px';
-                editBtn.style.fontWeight = 'bold';
-                editBtn.style.cursor = 'pointer';
-
-                editBtn.addEventListener('click', () => {
-                    editingMemberId = item.id;
-                    document.getElementById('info-form-title').innerText = 'Edit Profile Data';
-                    document.getElementById('save-info-btn').innerText = 'Update Data';
-
-                    document.getElementById('info-name').value = item.name || '';
-                    document.getElementById('info-address').value = item.address || '';
-                    document.getElementById('info-phone').value = item.phone || '';
-                    document.getElementById('info-status').value = item.status || '';
-
-                    const workInput = document.getElementById('info-work-details');
-                    if (item.status === 'Work') {
-                        workInput.style.display = 'block';
-                        workInput.value = item.work_details || '';
-                    } else {
-                        workInput.style.display = 'none';
-                        workInput.value = '';
-                    }
-
-                    directoryView.style.display = 'none';
-                    addInfoView.style.display = 'flex';
-                });
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.innerText = 'Delete';
-                deleteBtn.style.background = 'rgba(255, 75, 75, 0.25)';
-                deleteBtn.style.color = '#ff8080';
-                deleteBtn.style.border = '1px solid rgba(255, 75, 75, 0.4)';
-                deleteBtn.style.borderRadius = '6px';
-                deleteBtn.style.padding = '6px 12px';
-                deleteBtn.style.fontSize = '12px';
-                deleteBtn.style.fontWeight = 'bold';
-                deleteBtn.style.cursor = 'pointer';
-
-                deleteBtn.addEventListener('click', () => {
-                    const confirmed = confirm(`Are you sure you want to delete ${item.name}?`);
-                    if (!confirmed) return;
-
-                    requireSecurityCheck(async () => {
-                        directoryView.style.display = 'flex';
-                        const { error: delError } = await supabaseClient
-                            .from('member_info')
-                            .delete()
-                            .eq('id', item.id);
-
-                        if (delError) {
-                            alert('Error deleting profile: ' + delError.message);
-                        } else {
-                            cachedMembers = cachedMembers.filter(m => m.id !== item.id);
-                            applySearchFilter();
-                        }
-                    }, directoryView, 'Enter Code to Delete Member Profile');
-                });
-
-                actionsDiv.appendChild(editBtn);
-                actionsDiv.appendChild(deleteBtn);
-                card.appendChild(infoDiv);
-                card.appendChild(actionsDiv);
-                container.appendChild(card);
-            });
-        }
-
-        function applySearchFilter() {
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-            if (!query) {
-                renderDirectory(cachedMembers);
-                return;
-            }
-
-            const filtered = cachedMembers.filter(item => {
-                const name = (item.name || '').toLowerCase();
-                const address = (item.address || '').toLowerCase();
-                const phone = (item.phone || '').toLowerCase();
-                const status = (item.status || '').toLowerCase();
-                const workplace = (item.work_details || '').toLowerCase();
-                return name.includes(query) || address.includes(query) || phone.includes(query) || status.includes(query) || workplace.includes(query);
-            });
-
-            renderDirectory(filtered);
-        }
-
-        document.getElementById('search-input').addEventListener('input', applySearchFilter);
-
-        // Account Creation via Email Invitation
-        document.getElementById('add-member-btn').addEventListener('click', async () => {
-            const name = document.getElementById('new-name').value.trim();
-            const email = document.getElementById('new-email').value.trim();
-            const role = document.getElementById('new-role').value;
-
-            if (!name || !email) {
-                alert('Please enter both name and email.');
-                return;
-            }
-
-            const addBtn = document.getElementById('add-member-btn');
-            addBtn.disabled = true;
-            addBtn.innerText = 'Sending invitation...';
-
-            const tempPassword = 'Temp_' + Math.random().toString(36).slice(2) + '!' + Date.now();
-
-            const { data, error } = await supabaseClient.auth.signUp({
-                email: email,
-                password: tempPassword,
-                options: {
-                    data: { 
-                        display_name: name,
-                        role: role 
-                    }
-                }
-            });
-
-            if (error) {
-                alert('Error creating account: ' + error.message);
-                addBtn.disabled = false;
-                addBtn.innerText = 'Send Invitation Link';
-                return;
-            }
-
-            // Direct route to GitHub Pages site
-            const redirectUrl = 'https://NotAnkit-dev.github.io/WEB/index.html';
-            const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl
-            });
-
-            addBtn.disabled = false;
-            addBtn.innerText = 'Send Invitation Link';
-
-            if (resetError) {
-                alert('Account registered, but email sending failed: ' + resetError.message);
-            } else {
-                const roleLabel = role === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
-                alert(`Account created for ${name} (${roleLabel})!\nAn invitation email has been sent to ${email} with a direct link to set their password.`);
-                addMemberView.style.display = 'none';
-                mainView.style.display = 'flex';
-            }
-        });
 
         document.getElementById('logout-btn').addEventListener('click', async () => {
             await updateHeartbeat();
