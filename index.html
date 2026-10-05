@@ -42,7 +42,7 @@
         const loginView = document.getElementById('login-view');
         const createPasswordView = document.getElementById('create-password-view');
 
-        // Check if user clicked email link (PASSWORD_RECOVERY event)
+        // Check if arriving via password setup/recovery token
         supabaseClient.auth.onAuthStateChange(async (event, session) => {
             if (event === 'PASSWORD_RECOVERY' || (session && window.location.hash.includes('type=recovery'))) {
                 loginView.style.display = 'none';
@@ -52,7 +52,6 @@
             }
         });
 
-        // Check active session on load
         async function checkSession() {
             if (window.location.hash.includes('type=recovery')) {
                 loginView.style.display = 'none';
@@ -66,7 +65,6 @@
         }
         checkSession();
 
-        // Standard Login Submit
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value.trim();
@@ -90,7 +88,6 @@
             }
         });
 
-        // Set First-Time Password
         document.getElementById('save-password-btn').addEventListener('click', async () => {
             const newPassword = document.getElementById('set-new-password').value;
             const confirmPassword = document.getElementById('confirm-new-password').value;
