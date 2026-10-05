@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Register</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Load Supabase library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="login-background">
+        <div class="login-card">
+            <h2>Create Account</h2>
+            <input type="text" id="reg-email" placeholder="User Email / ID">
+            <input type="password" id="reg-password" placeholder="Choose Password">
+            <div class="button-group">
+                <button id="signup-btn" class="sign-in-btn">Sign Up</button>
+                <a href="index.html" class="register-btn" style="text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://omwsgrsctlqrsdnblklk.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_y4NF8jqtRbjEZbTTSLWhaw_KohHngqU';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+        document.getElementById('signup-btn').addEventListener('click', async () => {
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                alert('Error: ' + error.message);
+            } else {
+                alert('Account created successfully! You can now log in.');
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

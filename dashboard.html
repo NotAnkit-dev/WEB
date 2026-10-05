@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="login-background">
+        <div class="login-card" style="width: 580px; min-height: 460px; position: relative; padding-bottom: 70px;">
+            <h2 style="font-size: 24px; margin-bottom: 5px;">Community Dashboard 🛡</h2>
+            <p id="user-display" style="text-align: center; color: rgba(255,255,255,0.8); margin: 0 0 20px 0; font-size: 15px;">Loading user info...</p>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.2); width: 100%; margin-bottom: 20px;">
+
+            <!-- STEP 1: Main Dashboard View -->
+            <div id="main-view" style="display: flex; flex-direction: column; gap: 15px;">
+                <button id="goto-code-btn" class="sign-in-btn" style="padding: 16px; font-size: 16px;">Add New Member</button>
+                <button id="goto-people-btn" class="register-btn" style="padding: 16px; font-size: 16px; width: 100%;">People's Info</button>
+                <button id="goto-status-btn" class="sign-in-btn" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #00b09b, #96c93d);">Online & Activity Status</button>
+            </div>
+
+            <!-- STEP 2: Security Code Gate -->
+            <div id="code-gate-view" style="display: none; flex-direction: column; gap: 15px;">
+                <h3 id="code-gate-title" style="margin: 0; font-size: 18px; text-align: center;">Enter 5-Digit Security Code</h3>
+                <input type="password" id="gate-code" placeholder="Enter Code" maxlength="5" style="padding: 14px; font-size: 16px; text-align: center; letter-spacing: 2px;">
+                <div class="button-group">
+                    <button id="verify-code-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Verify</button>
+                    <button id="cancel-code-btn" class="register-btn" style="padding: 14px; font-size: 16px;">Cancel</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Add Member Form (No Password Field) -->
+            <div id="add-member-view" style="display: none; flex-direction: column; gap: 12px;">
+                <h3 style="margin: 0; font-size: 18px; text-align: center;">Create New Member Account</h3>
+                <p style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.7);">A link will be sent to their email to create their password.</p>
+                <input type="text" id="new-name" placeholder="Member Name" style="padding: 12px; font-size: 15px;">
+                <input type="email" id="new-email" placeholder="Member Gmail / Email" style="padding: 12px; font-size: 15px;">
+                
+                <select id="new-role" style="padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 15px; outline: none; appearance: auto;">
+                    <option value="admin" style="color: black;" selected>Rank: Admin (Default)</option>
+                    <option value="head_admin" style="color: black;">Rank: Head Admin 👑</option>
+                </select>
+
+                <div class="button-group">
+                    <button id="add-member-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Send Invitation Link</button>
+                    <button id="back-to-dash-btn" class="register-btn" style="padding: 14px; font-size: 16px;">Back</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: People's Info Submenu -->
+            <div id="people-menu-view" style="display: none; flex-direction: column; gap: 12px;">
+                <h3 style="margin: 0; font-size: 18px; text-align: center;">Member Records</h3>
+                <button id="goto-directory-btn" class="sign-in-btn" style="padding: 16px; font-size: 16px;">Directory List</button>
+                <button id="goto-add-info-btn" class="register-btn" style="padding: 16px; font-size: 16px; width: 100%;">Add Profile Data</button>
+                <button id="back-from-people-menu-btn" class="register-btn" style="padding: 12px; font-size: 14px; width: 100%; background: rgba(255,0,0,0.2);">Back</button>
+            </div>
+
+            <!-- STEP 5: Directory List View -->
+            <div id="directory-view" style="display: none; flex-direction: column; gap: 12px;">
+                <h3 style="margin: 0; font-size: 18px; text-align: center;">Directory List</h3>
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search by name, address, phone, or status..." 
+                    style="padding: 10px 14px; font-size: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); color: white; outline: none;"
+                >
+                <div id="member-list-container" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                    <p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Loading records...</p>
+                </div>
+                <button id="back-from-directory-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
+            </div>
+
+            <!-- STEP 6: Real-Time Presence View -->
+            <div id="presence-view" style="display: none; flex-direction: column; gap: 12px;">
+                <h3 style="margin: 0; font-size: 18px; text-align: center;">Member Presence Status</h3>
+                <p id="presence-rank-notice" style="margin: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75);"></p>
+                <div id="presence-list-container" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Checking active status...</p>
+                </div>
+                <button id="back-from-presence-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
+            </div>
+
+            <!-- STEP 7: Profile Data Form -->
+            <div id="add-info-view" style="display: none; flex-direction: column; gap: 12px;">
+                <h3 id="info-form-title" style="margin: 0; font-size: 18px; text-align: center;">Add Profile Data</h3>
+                <input type="text" id="info-name" placeholder="Full Name" style="padding: 12px; font-size: 15px;">
+                <input type="text" id="info-address" placeholder="Home Address" style="padding: 12px; font-size: 15px;">
+                <input 
+                    type="tel" 
+                    id="info-phone" 
+                    placeholder="Phone Number (Optional)" 
+                    maxlength="15" 
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+                    style="padding: 12px; font-size: 15px;"
+                >
+                <select id="info-status" style="padding: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; color: white; font-size: 15px; outline: none; appearance: auto;">
+                    <option value="" style="color: black;">Select Status...</option>
+                    <option value="Work" style="color: black;">Work</option>
+                    <option value="Student" style="color: black;">Student</option>
+                </select>
+                <input type="text" id="info-work-details" placeholder="Workplace / Job Title" style="display: none; padding: 12px; font-size: 15px;">
+                
+                <div class="button-group">
+                    <button id="save-info-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px;">Save Data</button>
+                    <button id="back-from-add-info-btn" class="register-btn" style="padding: 14px; font-size: 16px;">Back</button>
+                </div>
+            </div>
+
+            <button id="logout-btn" class="register-btn" style="position: absolute; bottom: 20px; right: 20px; width: auto; padding: 12px 22px; font-size: 15px;">Log Out</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://omwsgrsctlqrsdnblklk.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_y4NF8jqtRbjEZbTTSLWhaw_KohHngqU';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+        const GENERAL_CODE = "39528";
+        
+        let cachedMembers = [];
+        let editingMemberId = null;
+        let currentUser = null;
+        let currentUserName = '';
+        let currentUserRole = 'admin';
+        let presenceChannel = null;
+
+        let pendingAction = null;
+        let returnView = null;
+
+        function requireSecurityCheck(actionCallback, fromView, reasonText) {
+            if (currentUserRole === 'head_admin') {
+                actionCallback();
+                return;
+            }
+
+            pendingAction = actionCallback;
+            returnView = fromView;
+            hideAllViews();
+            document.getElementById('code-gate-title').innerText = reasonText || 'Enter 5-Digit Security Code';
+            document.getElementById('gate-code').value = '';
+            codeGateView.style.display = 'flex';
+        }
+
+        function formatLastSeen(dateString) {
+            if (!dateString) return 'Unknown';
+            const diffSeconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+            if (diffSeconds < 60) return 'Just now';
+            if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+            if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+            return `${Math.floor(diffSeconds / 86400)}d ago`;
+        }
+
+        async function updateHeartbeat() {
+            if (!currentUser) return;
+            await supabaseClient.from('user_presence').upsert({
+                id: currentUser.id,
+                email: currentUser.email,
+                name: currentUserName,
+                role: currentUserRole,
+                last_seen: new Date().toISOString()
+            });
+        }
+
+        function initPresenceRoom() {
+            presenceChannel = supabaseClient.channel('community_room', {
+                config: {
+                    presence: { key: currentUser.id },
+                    broadcast: { self: false }
+                }
+            });
+
+            presenceChannel
+                .on('presence', { event: 'sync' }, () => {
+                    if (document.getElementById('presence-view').style.display === 'flex') {
+                        loadPresenceStatus();
+                    }
+                })
+                .on('broadcast', { event: 'kick_user' }, async ({ payload }) => {
+                    if (currentUser && payload && payload.user_id === currentUser.id) {
+                        alert('Your account has been deleted by a Head Administrator.');
+                        await supabaseClient.auth.signOut();
+                        window.location.href = 'index.html';
+                    }
+                })
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        await presenceChannel.track({
+                            user_id: currentUser.id,
+                            name: currentUserName,
+                            role: currentUserRole,
+                            email: currentUser.email,
+                            online_at: new Date().toISOString()
+                        });
+                        await updateHeartbeat();
+                    }
+                });
+
+            setInterval(updateHeartbeat, 60000);
+        }
+
+        async function checkUser() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = session.user;
+                currentUserName = currentUser.user_metadata?.display_name || currentUser.email;
+                
+                const { data: presenceRec } = await supabaseClient
+                    .from('user_presence')
+                    .select('role')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                currentUserRole = presenceRec?.role || currentUser.user_metadata?.role || 'admin';
+
+                updateHeaderDisplay();
+                initPresenceRoom();
+            }
+        }
+        checkUser();
+
+        function updateHeaderDisplay() {
+            const roleBadge = currentUserRole === 'head_admin' ? '👑 Head Admin' : '🛡️ Admin';
+            document.getElementById('user-display').innerHTML = `Logged in as: <strong>${currentUserName}</strong> (${roleBadge})`;
+        }
+
+        const mainView = document.getElementById('main-view');
+        const codeGateView = document.getElementById('code-gate-view');
+        const addMemberView = document.getElementById('add-member-view');
+        const peopleMenuView = document.getElementById('people-menu-view');
+        const directoryView = document.getElementById('directory-view');
+        const presenceView = document.getElementById('presence-view');
+        const addInfoView = document.getElementById('add-info-view');
+
+        function hideAllViews() {
+            mainView.style.display = 'none';
+            codeGateView.style.display = 'none';
+            addMemberView.style.display = 'none';
+            peopleMenuView.style.display = 'none';
+            directoryView.style.display = 'none';
+            presenceView.style.display = 'none';
+            addInfoView.style.display = 'none';
+        }
+
+        document.getElementById('goto-code-btn').addEventListener('click', () => {
+            requireSecurityCheck(() => {
+                hideAllViews();
+                addMemberView.style.display = 'flex';
+                document.getElementById('new-name').value = '';
+                document.getElementById('new-email').value = '';
+                document.getElementById('new-role').value = 'admin';
+            }, mainView, 'Enter Security Code to Add Member');
+        });
+
+        document.getElementById('cancel-code-btn').addEventListener('click', () => {
+            codeGateView.style.display = 'none';
+            if (returnView) returnView.style.display = 'flex';
+            pendingAction = null;
+            returnView = null;
+        });
+
+        document.getElementById('verify-code-btn').addEventListener('click', async () => {
+            const enteredCode = document.getElementById('gate-code').value;
+            if (enteredCode === GENERAL_CODE) {
+                codeGateView.style.display = 'none';
+                if (pendingAction) {
+                    const action = pendingAction;
+                    pendingAction = null;
+                    returnView = null;
+                    await action();
+                }
+            } else {
+                alert('Access Denied: Incorrect Security Code!');
+            }
+        });
+
+        document.getElementById('goto-people-btn').addEventListener('click', () => {
+            mainView.style.display = 'none';
+            peopleMenuView.style.display = 'flex';
+        });
+
+        document.getElementById('back-from-people-menu-btn').addEventListener('click', () => {
+            peopleMenuView.style.display = 'none';
+            mainView.style.display = 'flex';
+        });
+
+        document.getElementById('goto-directory-btn').addEventListener('click', async () => {
+            peopleMenuView.style.display = 'none';
+            directoryView.style.display = 'flex';
+            document.getElementById('search-input').value = '';
+            await loadDirectory();
+        });
+
+        document.getElementById('back-from-directory-btn').addEventListener('click', () => {
+            directoryView.style.display = 'none';
+            peopleMenuView.style.display = 'flex';
+        });
+
+        document.getElementById('goto-status-btn').addEventListener('click', async () => {
+            mainView.style.display = 'none';
+            presenceView.style.display = 'flex';
+            await loadPresenceStatus();
+        });
+
+        document.getElementById('back-from-presence-btn').addEventListener('click', () => {
+            presenceView.style.display = 'none';
+            mainView.style.display = 'flex';
+        });
+
+        document.getElementById('back-to-dash-btn').addEventListener('click', () => {
+            addMemberView.style.display = 'none';
+            mainView.style.display = 'flex';
+        });
+
+        document.getElementById('goto-add-info-btn').addEventListener('click', () => {
+            requireSecurityCheck(() => {
+                editingMemberId = null;
+                document.getElementById('info-form-title').innerText = 'Add Profile Data';
+                document.getElementById('save-info-btn').innerText = 'Save Data';
+                peopleMenuView.style.display = 'none';
+                addInfoView.style.display = 'flex';
+                document.getElementById('info-name').value = '';
+                document.getElementById('info-address').value = '';
+                document.getElementById('info-phone').value = '';
+                document.getElementById('info-status').value = '';
+                document.getElementById('info-work-details').style.display = 'none';
+                document.getElementById('info-work-details').value = '';
+            }, peopleMenuView, 'Enter Security Code to Add Profile Data');
+        });
+
+        document.getElementById('back-from-add-info-btn').addEventListener('click', () => {
+            addInfoView.style.display = 'none';
+            if (editingMemberId !== null) {
+                editingMemberId = null;
+                directoryView.style.display = 'flex';
+            } else {
+                peopleMenuView.style.display = 'flex';
+            }
+        });
+
+        document.getElementById('info-status').addEventListener('change', (e) => {
+            const workInput = document.getElementById('info-work-details');
+            if (e.target.value === 'Work') {
+                workInput.style.display = 'block';
+            } else {
+                workInput.style.display = 'none';
+                workInput.value = '';
+            }
+        });
+
+        async function loadPresenceStatus() {
+            const container = document.getElementById('presence-list-container');
+            const notice = document.getElementById('presence-rank-notice');
+
+            if (currentUserRole === 'head_admin') {
+                notice.innerHTML = `<span style="color: #ffd700;">👑 Head Admin Controls Enabled (Delete & Rank Management)</span>`;
+            } else {
+                notice.innerHTML = `<span style="color: rgba(255,255,255,0.6);">🛡️ Admin View Only (Delete & Rank Management Restricted to Head Admins)</span>`;
+            }
+
+            container.innerHTML = `<p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Syncing member activity...</p>`;
+
+            const { data: allMembers, error } = await supabaseClient
+                .from('user_presence')
+                .select('*')
+                .order('last_seen', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p style="color: #ff6b6b; text-align: center; margin: 0;">Error: ${error.message}</p>`;
+                return;
+            }
+
+            const liveState = presenceChannel ? presenceChannel.presenceState() : {};
+            const liveUserIds = new Set(Object.keys(liveState));
+
+            container.innerHTML = '';
+
+            if (!allMembers || allMembers.length === 0) {
+                container.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.6); margin: 0;">No member activity recorded yet.</p>`;
+                return;
+            }
+
+            allMembers.forEach(member => {
+                const isOnline = liveUserIds.has(member.id);
+                const statusBadge = isOnline 
+                    ? `<span style="background: rgba(0, 255, 128, 0.2); color: #00ff88; border: 1px solid rgba(0, 255, 128, 0.4); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap;">🟢 Online</span>`
+                    : `<span style="background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); padding: 3px 8px; border-radius: 12px; font-size: 11px; white-space: nowrap;">⚪ Offline</span>`;
+
+                const subtext = isOnline 
+                    ? `<span style="color: #00ff88; font-size: 12px;">Active in room right now</span>`
+                    : `<span style="color: rgba(255, 255, 255, 0.65); font-size: 12px;">Last seen: ${formatLastSeen(member.last_seen)}</span>`;
+
+                const isHeadAdmin = member.role === 'head_admin';
+                const roleBadge = isHeadAdmin 
+                    ? `<span style="font-size: 11px; color: #ffd700; margin-left: 5px;">👑 Head Admin</span>` 
+                    : `<span style="font-size: 11px; color: #70d6ff; margin-left: 5px;">🛡️ Admin</span>`;
+
+                const row = document.createElement('div');
+                row.style.background = 'rgba(255, 255, 255, 0.08)';
+                row.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                row.style.borderRadius = '8px';
+                row.style.padding = '10px 14px';
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.gap = '10px';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.style.display = 'flex';
+                infoDiv.style.flexDirection = 'column';
+                infoDiv.style.gap = '2px';
+                infoDiv.innerHTML = `
+                    <div style="font-size: 14px; font-weight: bold; color: white; display: flex; align-items: center;">
+                        ${member.name} ${roleBadge}
+                    </div>
+                    ${subtext}
+                `;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.alignItems = 'center';
+                actionsDiv.style.gap = '6px';
+                actionsDiv.style.flexShrink = '0';
+                actionsDiv.innerHTML = statusBadge;
+
+                if (currentUserRole === 'head_admin') {
+                    const rankBtn = document.createElement('button');
+                    rankBtn.innerText = 'Rank ⚙️';
+                    rankBtn.title = `Toggle rank between Admin and Head Admin`;
+                    rankBtn.style.background = 'rgba(255, 193, 7, 0.2)';
+                    rankBtn.style.color = '#ffc107';
+                    rankBtn.style.border = '1px solid rgba(255, 193, 7, 0.4)';
+                    rankBtn.style.borderRadius = '6px';
+                    rankBtn.style.padding = '5px 9px';
+                    rankBtn.style.fontSize = '12px';
+                    rankBtn.style.fontWeight = 'bold';
+                    rankBtn.style.cursor = 'pointer';
+
+                    rankBtn.addEventListener('click', async () => {
+                        const newRole = isHeadAdmin ? 'admin' : 'head_admin';
+                        const newRoleLabel = newRole === 'head_admin' ? 'Head Admin 👑' : 'Admin 🛡️';
+
+                        const confirmed = confirm(`Head Admin Action: Change rank of "${member.name}" to ${newRoleLabel}?`);
+                        if (!confirmed) return;
+
+                        const { error: updateErr } = await supabaseClient
+                            .from('user_presence')
+                            .update({ role: newRole })
+                            .eq('id', member.id);
+
+                        if (updateErr) {
+                            alert('Error updating rank: ' + updateErr.message);
+                        } else {
+                            alert(`Rank updated: "${member.name}" is now ${newRoleLabel}!`);
+                            if (member.id === currentUser.id) {
+                                currentUserRole = newRole;
+                                updateHeaderDisplay();
+                            }
+                            await loadPresenceStatus();
+                        }
+                    });
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.innerText = 'Remove';
+                    removeBtn.style.background = 'rgba(255, 75, 75, 0.25)';
+                    removeBtn.style.color = '#ff8080';
+                    removeBtn.style.border = '1px solid rgba(255, 75, 75, 0.4)';
+                    removeBtn.style.borderRadius = '6px';
+                    removeBtn.style.padding = '5px 9px';
+                    removeBtn.style.fontSize = '12px';
+                    removeBtn.style.fontWeight = 'bold';
+                    removeBtn.style.cursor = 'pointer';
+
+                    removeBtn.addEventListener('click', async () => {
+                        const confirmed = confirm(`Head Admin Action: Are you sure you want to PERMANENTLY delete the account for "${member.name}" and kick them out?`);
+                        if (!confirmed) return;
+
+                        if (presenceChannel) {
+                            await presenceChannel.send({
+                                type: 'broadcast',
+                                event: 'kick_user',
+                                payload: { user_id: member.id }
+                            });
+                        }
+
+                        const { error: rpcErr } = await supabaseClient.rpc('delete_user_account', {
+                            target_user_id: member.id
+                        });
+
+                        if (rpcErr) {
+                            alert('Error deleting account: ' + rpcErr.message);
+                        } else {
+                            alert(`Account for "${member.name}" has been permanently deleted and kicked out!`);
+                            if (member.id === currentUser.id) {
+                                await supabaseClient.auth.signOut();
+                                window.location.href = 'index.html';
+                                return;
+                            }
+                            await loadPresenceStatus();
+                        }
+                    });
+
+                    actionsDiv.appendChild(rankBtn);
+                    actionsDiv.appendChild(removeBtn);
+                }
+
+                row.appendChild(infoDiv);
+                row.appendChild(actionsDiv);
+                container.appendChild(row);
+            });
+        }
+
+        document.getElementById('save-info-btn').addEventListener('click', async () => {
+            const name = document.getElementById('info-name').value.trim();
+            const address = document.getElementById('info-address').value.trim();
+            const phone = document.getElementById('info-phone').value.trim();
+            const status = document.getElementById('info-status').value;
+            const workDetails = document.getElementById('info-work-details').value.trim();
+
+            if (!name || !address || !status) {
+                alert('Please fill out all visible required fields before saving!');
+                return;
+            }
+
+            if (status === 'Work' && !workDetails) {
+                alert('Please enter your workplace or job title!');
+                return;
+            }
+
+            const recordData = { 
+                name: name, 
+                address: address, 
+                phone: phone ? phone : null,
+                status: status, 
+                work_details: status === 'Work' ? workDetails : null 
+            };
+
+            if (editingMemberId !== null) {
+                const { error } = await supabaseClient
+                    .from('member_info')
+                    .update(recordData)
+                    .eq('id', editingMemberId);
+
+                if (error) {
+                    alert('Error updating record: ' + error.message);
+                } else {
+                    alert('Profile updated successfully for ' + name + '!');
+                    editingMemberId = null;
+                    addInfoView.style.display = 'none';
+                    directoryView.style.display = 'flex';
+                    await loadDirectory();
+                }
+            } else {
+                const { error } = await supabaseClient
+                    .from('member_info')
+                    .insert([recordData]);
+
+                if (error) {
+                    alert('Error saving record: ' + error.message);
+                } else {
+                    alert('Profile data saved successfully for ' + name + '!');
+                    addInfoView.style.display = 'none';
+                    peopleMenuView.style.display = 'flex';
+                }
+            }
+        });
+
+        async function loadDirectory() {
+            const container = document.getElementById('member-list-container');
+            container.innerHTML = `<p style="margin: 0; text-align: center; color: rgba(255,255,255,0.7);">Loading records...</p>`;
+
+            const { data, error } = await supabaseClient
+                .from('member_info')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p style="color: #ff6b6b; text-align: center; margin: 0;">Error loading: ${error.message}</p>`;
+                return;
+            }
+
+            cachedMembers = data || [];
+            applySearchFilter();
+        }
+
+        function renderDirectory(list) {
+            const container = document.getElementById('member-list-container');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.6); margin: 0;">No matching records found.</p>`;
+                return;
+            }
+
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.style.background = 'rgba(255, 255, 255, 0.1)';
+                card.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                card.style.borderRadius = '8px';
+                card.style.padding = '10px 14px';
+                card.style.display = 'flex';
+                card.style.justifyContent = 'space-between';
+                card.style.alignItems = 'center';
+                card.style.gap = '10px';
+
+                const workLine = item.status === 'Work' && item.work_details 
+                    ? `<div style="font-size: 13px; color: rgba(255,255,255,0.8);"><strong>Workplace:</strong> ${item.work_details}</div>` 
+                    : '';
+
+                const phoneLine = item.phone 
+                    ? `<div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Phone:</strong> ${item.phone}</div>`
+                    : '';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.style.display = 'flex';
+                infoDiv.style.flexDirection = 'column';
+                infoDiv.style.gap = '3px';
+                infoDiv.innerHTML = `
+                    <div style="font-size: 15px; font-weight: bold; color: #00ffcc;">${item.name}</div>
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Address:</strong> ${item.address}</div>
+                    ${phoneLine}
+                    <div style="font-size: 13px; color: rgba(255,255,255,0.85);"><strong>Status:</strong> ${item.status}</div>
+                    ${workLine}
+                `;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.gap = '6px';
+                actionsDiv.style.flexShrink = '0';
+
+                const editBtn = document.createElement('button');
+                editBtn.innerText = 'Edit';
+                editBtn.style.background = 'rgba(0, 198, 255, 0.25)';
+                editBtn.style.color = '#70d6ff';
+                editBtn.style.border = '1px solid rgba(0, 198, 255, 0.4)';
+                editBtn.style.borderRadius = '6px';
+                editBtn.style.padding = '6px 12px';
+                editBtn.style.fontSize = '12px';
+                editBtn.style.fontWeight = 'bold';
+                editBtn.style.cursor = 'pointer';
+
+                editBtn.addEventListener('click', () => {
+                    editingMemberId = item.id;
+                    document.getElementById('info-form-title').innerText = 'Edit Profile Data';
+                    document.getElementById('save-info-btn').innerText = 'Update Data';
+
+                    document.getElementById('info-name').value = item.name || '';
+                    document.getElementById('info-address').value = item.address || '';
+                    document.getElementById('info-phone').value = item.phone || '';
+                    document.getElementById('info-status').value = item.status || '';
+
+                    const workInput = document.getElementById('info-work-details');
+                    if (item.status === 'Work') {
+                        workInput.style.display = 'block';
+                        workInput.value = item.work_details || '';
+                    } else {
+                        workInput.style.display = 'none';
+                        workInput.value = '';
+                    }
+
+                    directoryView.style.display = 'none';
+                    addInfoView.style.display = 'flex';
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerText = 'Delete';
+                deleteBtn.style.background = 'rgba(255, 75, 75, 0.25)';
+                deleteBtn.style.color = '#ff8080';
+                deleteBtn.style.border = '1px solid rgba(255, 75, 75, 0.4)';
+                deleteBtn.style.borderRadius = '6px';
+                deleteBtn.style.padding = '6px 12px';
+                deleteBtn.style.fontSize = '12px';
+                deleteBtn.style.fontWeight = 'bold';
+                deleteBtn.style.cursor = 'pointer';
+
+                deleteBtn.addEventListener('click', () => {
+                    const confirmed = confirm(`Are you sure you want to delete ${item.name}?`);
+                    if (!confirmed) return;
+
+                    requireSecurityCheck(async () => {
+                        directoryView.style.display = 'flex';
+                        const { error: delError } = await supabaseClient
+                            .from('member_info')
+                            .delete()
+                            .eq('id', item.id);
+
+                        if (delError) {
+                            alert('Error deleting profile: ' + delError.message);
+                        } else {
+                            cachedMembers = cachedMembers.filter(m => m.id !== item.id);
+                            applySearchFilter();
+                        }
+                    }, directoryView, 'Enter Code to Delete Member Profile');
+                });
+
+                actionsDiv.appendChild(editBtn);
+                actionsDiv.appendChild(deleteBtn);
+                card.appendChild(infoDiv);
+                card.appendChild(actionsDiv);
+                container.appendChild(card);
+            });
+        }
+
+        function applySearchFilter() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            if (!query) {
+                renderDirectory(cachedMembers);
+                return;
+            }
+
+            const filtered = cachedMembers.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const address = (item.address || '').toLowerCase();
+                const phone = (item.phone || '').toLowerCase();
+                const status = (item.status || '').toLowerCase();
+                const workplace = (item.work_details || '').toLowerCase();
+                return name.includes(query) || address.includes(query) || phone.includes(query) || status.includes(query) || workplace.includes(query);
+            });
+
+            renderDirectory(filtered);
+        }
+
+        document.getElementById('search-input').addEventListener('input', applySearchFilter);
+
+        // --- ACCOUNT CREATION VIA EMAIL INVITATION ---
+        document.getElementById('add-member-btn').addEventListener('click', async () => {
+            const name = document.getElementById('new-name').value.trim();
+            const email = document.getElementById('new-email').value.trim();
+            const role = document.getElementById('new-role').value;
+
+            if (!name || !email) {
+                alert('Please enter both name and email.');
+                return;
+            }
+
+            const addBtn = document.getElementById('add-member-btn');
+            addBtn.disabled = true;
+            addBtn.innerText = 'Sending invitation...';
+
+            // Generate temporary secure password to initialize the account
+            const tempPassword = 'Init_' + Math.random().toString(36).slice(2) + '!' + Date.now();
+
+            // 1. Create the account in Supabase
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: tempPassword,
+                options: {
+                    data: { 
+                        display_name: name,
+                        role: role 
+                    }
+                }
+            });
+
+            if (error) {
+                alert('Error creating account: ' + error.message);
+                addBtn.disabled = false;
+                addBtn.innerText = 'Send Invitation Link';
+                return;
+            }
+
+            // 2. Dispatch password creation link to their Gmail
+            const redirectUrl = window.location.origin + window.location.pathname.replace('dashboard.html', 'index.html');
+            const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl
+            });
+
+            addBtn.disabled = false;
+            addBtn.innerText = 'Send Invitation Link';
+
+            if (resetError) {
+                alert('Account registered, but email sending failed: ' + resetError.message);
+            } else {
+                const roleLabel = role === 'head_admin' ? 'Head Admin' : 'Admin';
+                alert(`Account created for ${name} (${roleLabel})!\nAn invitation email has been sent to ${email} with a direct link to set their password.`);
+                addMemberView.style.display = 'none';
+                mainView.style.display = 'flex';
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await updateHeartbeat();
+            if (presenceChannel) {
+                await presenceChannel.untrack();
+            }
+            await supabaseClient.auth.signOut();
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
