@@ -42,8 +42,8 @@
             position: fixed;
             bottom: 80px;
             right: 20px;
-            width: 360px;
-            height: 480px;
+            width: 370px;
+            height: 500px;
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
@@ -51,6 +51,18 @@
             flex-direction: column;
             z-index: 1000;
             overflow: hidden;
+            transition: all 0.25s ease-in-out;
+        }
+
+        /* Full Screen Chat Mode */
+        #chat-widget.fullscreen {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            border: none;
+            z-index: 9999;
         }
 
         .chat-header {
@@ -62,77 +74,146 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            user-select: none;
         }
 
-        .chat-header button {
+        .chat-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-header-actions button {
             background: transparent;
             border: none;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        .chat-header-actions button:hover {
+            transform: scale(1.15);
+            opacity: 0.85;
         }
 
         #chat-messages {
             flex: 1;
-            padding: 14px;
+            padding: 16px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            background: rgba(15, 23, 42, 0.6);
+            gap: 14px;
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .chat-bubble-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 82%;
+            animation: fadeInMsg 0.18s ease-out;
+        }
+
+        @keyframes fadeInMsg {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-bubble-container.sent {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .chat-bubble-container.received {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        /* Top Meta Row (Sender Name & Timestamp) */
+        .chat-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .chat-sender-label {
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.3px;
+        }
+
+        .chat-bubble-container.sent .chat-sender-label {
+            color: #7dd3fc;
+        }
+
+        .chat-bubble-container.received .chat-sender-label {
+            color: #cbd5e1;
+        }
+
+        /* Date/Time badge (Initially hidden in mini-chat, visible in Fullscreen) */
+        .chat-time-label {
+            display: none;
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Reveal Date/Time in Fullscreen mode */
+        #chat-widget.fullscreen .chat-time-label {
+            display: inline-block;
+        }
+
+        #chat-widget.fullscreen .chat-bubble-container {
+            max-width: 65%;
         }
 
         .chat-bubble {
-            max-width: 80%;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.4;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            line-height: 1.45;
             word-wrap: break-word;
+            width: fit-content;
         }
 
-        .chat-bubble.sent {
-            align-self: flex-end;
+        .chat-bubble-container.sent .chat-bubble {
             background: linear-gradient(135deg, #0284c7, #0ea5e9);
             color: white;
             border-bottom-right-radius: 2px;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
         }
 
-        .chat-bubble.received {
-            align-self: flex-start;
+        .chat-bubble-container.received .chat-bubble {
             background: rgba(255, 255, 255, 0.12);
             color: #f1f5f9;
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-bottom-left-radius: 2px;
-        }
-
-        .chat-bubble .sender-name {
-            font-size: 11px;
-            font-weight: bold;
-            color: #7dd3fc;
-            margin-bottom: 2px;
-            display: block;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         }
 
         .chat-footer {
-            padding: 10px;
+            padding: 12px 16px;
             background: #1e293b;
             border-top: 1px solid #334155;
             display: flex;
-            gap: 8px;
+            gap: 10px;
         }
 
         .chat-footer input {
             flex: 1;
-            padding: 8px 12px;
-            font-size: 13px;
-            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 14px;
+            border-radius: 8px;
         }
 
         .chat-footer button {
-            padding: 8px 14px;
-            font-size: 13px;
+            padding: 10px 18px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -255,7 +336,10 @@
     <div id="chat-widget">
         <div class="chat-header">
             <span>💬 Community Live Chat</span>
-            <button id="close-chat-btn">&times;</button>
+            <div class="chat-header-actions">
+                <button id="toggle-fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+                <button id="close-chat-btn" title="Close Chat">&times;</button>
+            </div>
         </div>
         <div id="chat-messages">
             <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin: auto 0;">Welcome to the chat room!</p>
@@ -339,7 +423,7 @@
                     }
                 })
                 .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
-                    appendChatMessage(payload.sender, payload.message, false);
+                    appendChatMessage(payload.sender, payload.message, payload.timestamp, false);
                 })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
@@ -1046,36 +1130,80 @@
         const chatWidget = document.getElementById('chat-widget');
         const openChatBtn = document.getElementById('open-chat-btn');
         const closeChatBtn = document.getElementById('close-chat-btn');
+        const toggleFullscreenBtn = document.getElementById('toggle-fullscreen-btn');
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
         const chatMessages = document.getElementById('chat-messages');
 
+        // Toggle chat opening
         openChatBtn.addEventListener('click', () => {
             chatWidget.style.display = chatWidget.style.display === 'flex' ? 'none' : 'flex';
             if (chatWidget.style.display === 'flex') {
                 chatInput.focus();
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
 
+        // Close chat
         closeChatBtn.addEventListener('click', () => {
             chatWidget.style.display = 'none';
+            chatWidget.classList.remove('fullscreen');
+            toggleFullscreenBtn.innerHTML = '⛶';
+            toggleFullscreenBtn.title = 'Enter Fullscreen';
         });
 
-        function appendChatMessage(sender, message, isSelf) {
-            const bubble = document.createElement('div');
-            bubble.classList.add('chat-bubble', isSelf ? 'sent' : 'received');
+        // Fullscreen Toggle
+        toggleFullscreenBtn.addEventListener('click', () => {
+            chatWidget.classList.toggle('fullscreen');
+            const isFull = chatWidget.classList.contains('fullscreen');
+            toggleFullscreenBtn.innerHTML = isFull ? '🗗' : '⛶';
+            toggleFullscreenBtn.title = isFull ? 'Exit Fullscreen' : 'Enter Fullscreen';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
 
-            if (!isSelf) {
-                const nameSpan = document.createElement('span');
-                nameSpan.classList.add('sender-name');
-                nameSpan.innerText = sender;
-                bubble.appendChild(nameSpan);
+        function formatDateTime(isoString) {
+            const dateObj = isoString ? new Date(isoString) : new Date();
+            return dateObj.toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function appendChatMessage(sender, message, timestamp, isSelf) {
+            const container = document.createElement('div');
+            container.classList.add('chat-bubble-container', isSelf ? 'sent' : 'received');
+
+            // Top Header: Visible sender name + Date/Time
+            const metaRow = document.createElement('div');
+            metaRow.classList.add('chat-meta-row');
+
+            const nameLabel = document.createElement('span');
+            nameLabel.classList.add('chat-sender-label');
+            nameLabel.innerText = isSelf ? `You (${sender})` : sender;
+
+            const timeLabel = document.createElement('span');
+            timeLabel.classList.add('chat-time-label');
+            timeLabel.innerText = formatDateTime(timestamp);
+
+            if (isSelf) {
+                metaRow.appendChild(timeLabel);
+                metaRow.appendChild(nameLabel);
+            } else {
+                metaRow.appendChild(nameLabel);
+                metaRow.appendChild(timeLabel);
             }
 
-            const textNode = document.createTextNode(message);
-            bubble.appendChild(textNode);
+            // Message text bubble
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble');
+            bubble.innerText = message;
 
-            chatMessages.appendChild(bubble);
+            container.appendChild(metaRow);
+            container.appendChild(bubble);
+
+            chatMessages.appendChild(container);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
@@ -1084,18 +1212,21 @@
             const text = chatInput.value.trim();
             if (!text || !presenceChannel) return;
 
-            // Broadcast message to room members
+            const now = new Date().toISOString();
+
+            // Broadcast message across active channel
             await presenceChannel.send({
                 type: 'broadcast',
                 event: 'chat_message',
                 payload: {
                     sender: currentUserName,
-                    message: text
+                    message: text,
+                    timestamp: now
                 }
             });
 
-            // Display locally
-            appendChatMessage(currentUserName, text, true);
+            // Display locally immediately
+            appendChatMessage(currentUserName, text, now, true);
             chatInput.value = '';
         });
 
