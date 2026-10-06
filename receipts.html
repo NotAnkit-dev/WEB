@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Book (OCR)</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+    <div class="login-background">
+        <div class="login-card" style="width: 720px; min-height: 520px; display: flex; flex-direction: column; gap: 14px;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">
+                <h2 style="font-size: 22px; margin: 0;">🧾 Receipt Book Management</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button id="export-csv-btn" class="register-btn" style="padding: 6px 12px; font-size: 13px;">Export CSV</button>
+                    <button onclick="window.location.href='dashboard.html'" class="register-btn" style="padding: 6px 12px; font-size: 13px; background: rgba(255,0,0,0.2);">Back</button>
+                </div>
+            </div>
+
+            <!-- OCR Capture Area -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <label style="font-size: 13px; color: #cbd5e1; font-weight: bold;">Scan Physical Receipt:</label>
+                <input type="file" id="receipt-upload" accept="image/*" capture="environment" style="padding: 8px;">
+                <img id="receipt-preview" alt="Preview" style="display: none; max-height: 150px; object-fit: contain; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.3);">
+                
+                <button id="run-ocr-btn" class="sign-in-btn" style="padding: 10px; font-size: 14px; background: linear-gradient(135deg, #f59e0b, #d97706);" disabled>Scan Receipt Text (OCR)</button>
+                <span id="ocr-status" style="font-size: 13px; text-align: center; color: #38bdf8;"></span>
+            </div>
+
+            <!-- Entry Form -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <input type="text" id="rec-number" placeholder="Receipt No. *" style="padding: 10px; font-size: 14px;">
+                    <input type="date" id="rec-date" style="padding: 10px; font-size: 14px;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 8px;">
+                    <input type="text" id="rec-name" placeholder="Payer / Contributor Name *" style="padding: 10px; font-size: 14px;">
+                    <input type="number" id="rec-amount" step="0.01" placeholder="Amount (₹) *" style="padding: 10px; font-size: 14px;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px;">
+                    <select id="rec-mode" style="padding: 10px; font-size: 14px; background: rgba(255,255,255,0.2); color: white;">
+                        <option value="Cash" style="color: black;">Cash</option>
+                        <option value="UPI / Online" style="color: black;">UPI / Online</option>
+                        <option value="Cheque" style="color: black;">Cheque</option>
+                    </select>
+                    <input type="text" id="rec-purpose" placeholder="Purpose / Category (e.g. Sewa)" style="padding: 10px; font-size: 14px;">
+                </div>
+                <button id="save-receipt-btn" class="sign-in-btn" style="padding: 12px; font-size: 15px;">Save to Ledger</button>
+            </div>
+
+            <!-- Receipts Ledger Table -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; max-height: 200px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.2); color: #94a3b8;">
+                            <th style="padding: 8px;">No.</th>
+                            <th style="padding: 8px;">Date</th>
+                            <th style="padding: 8px;">Name</th>
+                            <th style="padding: 8px;">Amount</th>
+                            <th style="padding: 8px;">Mode</th>
+                            <th style="padding: 8px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receipts-tbody"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let receipts = JSON.parse(localStorage.getItem('saved_receipts')) || [];
+
+        const fileInput = document.getElementById('receipt-upload');
+        const preview = document.getElementById('receipt-preview');
+        const scanBtn = document.getElementById('run-ocr-btn');
+        const statusText = document.getElementById('ocr-status');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+                scanBtn.disabled = false;
+                statusText.innerText = 'Photo loaded. Click "Scan Receipt Text" to read.';
+            } else {
+                preview.style.display = 'none';
+                scanBtn.disabled = true;
+            }
+        });
+
+        scanBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            scanBtn.disabled = true;
+            statusText.innerText = 'Reading image with OCR...';
+
+            try {
+                const result = await Tesseract.recognize(
+                    file,
+                    'eng',
+                    {
+                        logger: (m) => {
+                            if (m.status === 'recognizing text') {
+                                statusText.innerText = `Scanning: ${Math.round(m.progress * 100)}%`;
+                            }
+                        }
+                    }
+                );
+
+                const text = result.data.text;
+                statusText.innerText = 'Scan finished! Values filled in below.';
+
+                // Detect Amount
+                const amountMatch = text.match(/(?:total|amount|rs\.?|inr|\$)\s*[:.-]?\s*([0-9]+(?:[\.,][0-9]{2})?)/i);
+                if (amountMatch) {
+                    document.getElementById('rec-amount').value = amountMatch[1].replace(',', '.');
+                }
+
+                // Detect Receipt Number
+                const recMatch = text.match(/(?:receipt|rec|no|voucher)\s*[:.#-]?\s*([a-zA-Z0-9\/-]+)/i);
+                if (recMatch) {
+                    document.getElementById('rec-number').value = recMatch[1];
+                }
+
+                // Detect Date
+                const dateMatch = text.match(/\b(\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}|\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\b/);
+                if (dateMatch) {
+                    const parts = dateMatch[0].replace(/[\/.]/g, '-').split('-');
+                    if (parts[0].length === 4) {
+                        document.getElementById('rec-date').value = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    } else if (parts[2].length === 4) {
+                        document.getElementById('rec-date').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                } else {
+                    document.getElementById('rec-date').value = new Date().toISOString().split('T')[0];
+                }
+
+                // Detect Name
+                const nameMatch = text.match(/(?:received from|name|mr\.|mrs\.|shri)\s*[:.-]?\s*([a-zA-Z\s]+)/i);
+                if (nameMatch) {
+                    document.getElementById('rec-name').value = nameMatch[1].slice(0, 25).trim();
+                }
+
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = 'Could not read receipt clearly. Please take a clearer picture.';
+            } finally {
+                scanBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('save-receipt-btn').addEventListener('click', () => {
+            const no = document.getElementById('rec-number').value.trim();
+            const date = document.getElementById('rec-date').value;
+            const name = document.getElementById('rec-name').value.trim();
+            const amount = document.getElementById('rec-amount').value;
+            const mode = document.getElementById('rec-mode').value;
+            const purpose = document.getElementById('rec-purpose').value.trim();
+
+            if (!no || !name || !amount) {
+                alert('Please enter at least the Receipt No., Name, and Amount.');
+                return;
+            }
+
+            const item = {
+                id: Date.now(),
+                no: no,
+                date: date || new Date().toISOString().split('T')[0],
+                name: name,
+                amount: parseFloat(amount).toFixed(2),
+                mode: mode,
+                purpose: purpose || '-'
+            };
+
+            receipts.unshift(item);
+            localStorage.setItem('saved_receipts', JSON.stringify(receipts));
+            renderTable();
+
+            // Reset
+            document.getElementById('rec-number').value = '';
+            document.getElementById('rec-name').value = '';
+            document.getElementById('rec-amount').value = '';
+            document.getElementById('rec-purpose').value = '';
+            preview.style.display = 'none';
+            fileInput.value = '';
+            scanBtn.disabled = true;
+            statusText.innerText = '';
+
+            alert('Receipt successfully added to ledger!');
+        });
+
+        function renderTable() {
+            const tbody = document.getElementById('receipts-tbody');
+            tbody.innerHTML = '';
+
+            if (receipts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="padding: 10px; text-align: center; color: rgba(255,255,255,0.5);">No receipts recorded yet.</td></tr>`;
+                return;
+            }
+
+            receipts.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                tr.innerHTML = `
+                    <td style="padding: 8px; color: #38bdf8;">${r.no}</td>
+                    <td style="padding: 8px;">${r.date}</td>
+                    <td style="padding: 8px;">${r.name}</td>
+                    <td style="padding: 8px;">₹${r.amount}</td>
+                    <td style="padding: 8px;">${r.mode}</td>
+                    <td style="padding: 8px;">
+                        <button onclick="removeReceipt(${r.id})" style="background: rgba(255,75,75,0.25); color: #ff8080; border: 1px solid rgba(255,75,75,0.4); border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer;">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.removeReceipt = function(id) {
+            if (confirm('Delete this record?')) {
+                receipts = receipts.filter(r => r.id !== id);
+                localStorage.setItem('saved_receipts', JSON.stringify(receipts));
+                renderTable();
+            }
+        };
+
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            if (receipts.length === 0) {
+                alert('No receipts to export.');
+                return;
+            }
+
+            const headers = ['Receipt No', 'Date', 'Name', 'Amount', 'Payment Mode', 'Purpose'];
+            const rows = receipts.map(r => [
+                `"${r.no}"`,
+                `"${r.date}"`,
+                `"${r.name}"`,
+                `"${r.amount}"`,
+                `"${r.mode}"`,
+                `"${r.purpose}"`
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const link = document.createElement('a');
+            link.setAttribute('href', encodeURI(csvContent));
+            link.setAttribute('download', `receipts_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        renderTable();
+    </script>
+</body>
+</html>
