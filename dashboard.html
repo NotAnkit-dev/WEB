@@ -6,6 +6,135 @@
     <title>Community Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Bottom Action Buttons Container */
+        .bottom-actions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Chat Button styling: matching log out size, light blue into blue gradient */
+        .chat-toggle-btn {
+            background: linear-gradient(135deg, #7dd3fc, #0284c7);
+            border: none;
+            border-radius: 8px;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            width: auto;
+            padding: 12px 22px;
+            font-size: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .chat-toggle-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.8);
+        }
+
+        /* Chat Widget Modal / Overlay Box */
+        #chat-widget {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 360px;
+            height: 480px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            color: white;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header button {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #chat-messages {
+            flex: 1;
+            padding: 14px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .chat-bubble.sent {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #0284c7, #0ea5e9);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-bubble.received {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-bubble .sender-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #7dd3fc;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .chat-footer {
+            padding: 10px;
+            background: #1e293b;
+            border-top: 1px solid #334155;
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-footer input {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+
+        .chat-footer button {
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body>
     <div class="login-background">
@@ -114,9 +243,27 @@
                 </div>
             </div>
 
-            <!-- Fixed Logout Button -->
-            <button id="logout-btn" class="register-btn" style="position: absolute; bottom: 20px; right: 20px; width: auto; padding: 12px 22px; font-size: 15px; background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4);">Log Out</button>
+            <!-- Bottom Action Row: Chat Button beside Logout Button -->
+            <div class="bottom-actions">
+                <button id="open-chat-btn" class="chat-toggle-btn">💬 Chat</button>
+                <button id="logout-btn" class="register-btn" style="width: auto; padding: 12px 22px; font-size: 15px; background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4);">Log Out</button>
+            </div>
         </div>
+    </div>
+
+    <!-- Real-Time Chat System Popup Box -->
+    <div id="chat-widget">
+        <div class="chat-header">
+            <span>💬 Community Live Chat</span>
+            <button id="close-chat-btn">&times;</button>
+        </div>
+        <div id="chat-messages">
+            <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin: auto 0;">Welcome to the chat room!</p>
+        </div>
+        <form id="chat-form" class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" required>
+            <button type="submit" class="sign-in-btn">Send</button>
+        </form>
     </div>
 
     <script>
@@ -170,7 +317,7 @@
             });
         }
 
-        function initPresenceRoom() {
+        function initPresenceAndChatRoom() {
             presenceChannel = supabaseClient.channel('community_room', {
                 config: {
                     presence: { key: currentUser.id },
@@ -190,6 +337,9 @@
                         await supabaseClient.auth.signOut();
                         window.location.href = 'index.html';
                     }
+                })
+                .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
+                    appendChatMessage(payload.sender, payload.message, false);
                 })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
@@ -224,7 +374,7 @@
                 currentUserRole = presenceRec?.role || currentUser.user_metadata?.role || 'admin';
 
                 updateHeaderDisplay();
-                initPresenceRoom();
+                initPresenceAndChatRoom();
             }
         }
         checkUser();
@@ -477,7 +627,6 @@
                 actionsDiv.style.gap = '6px';
                 actionsDiv.style.alignItems = 'center';
 
-                // WhatsApp Button with Glow Hover
                 const waBtn = document.createElement('button');
                 waBtn.innerText = '💬 WhatsApp';
                 waBtn.style.background = 'rgba(37, 211, 102, 0.2)';
@@ -502,7 +651,6 @@
                     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
                 });
 
-                // SMS Button with Glow Hover
                 const smsBtn = document.createElement('button');
                 smsBtn.innerText = '📱 SMS';
                 smsBtn.style.background = 'rgba(0, 198, 255, 0.2)';
@@ -527,7 +675,6 @@
                     window.location.href = `sms:${cleanPhone}?body=${text}`;
                 });
 
-                // Gmail Button with Glow Hover
                 const gmailBtn = document.createElement('button');
                 gmailBtn.innerText = '✉ Gmail';
                 gmailBtn.style.background = 'rgba(234, 67, 53, 0.2)';
@@ -552,7 +699,6 @@
                     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(item.email)}&su=${subject}&body=${body}`, '_blank');
                 });
 
-                // Edit Button with Glow Hover
                 const editBtn = document.createElement('button');
                 editBtn.innerText = 'Edit';
                 editBtn.style.background = 'rgba(255, 255, 255, 0.15)';
@@ -595,7 +741,6 @@
                     addInfoView.style.display = 'flex';
                 });
 
-                // Delete Button with Glow Hover
                 const deleteBtn = document.createElement('button');
                 deleteBtn.innerText = 'Delete';
                 deleteBtn.style.background = 'rgba(255, 75, 75, 0.25)';
@@ -897,6 +1042,64 @@
             });
         }
 
+        // ================= REAL-TIME CHAT SYSTEM =================
+        const chatWidget = document.getElementById('chat-widget');
+        const openChatBtn = document.getElementById('open-chat-btn');
+        const closeChatBtn = document.getElementById('close-chat-btn');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        openChatBtn.addEventListener('click', () => {
+            chatWidget.style.display = chatWidget.style.display === 'flex' ? 'none' : 'flex';
+            if (chatWidget.style.display === 'flex') {
+                chatInput.focus();
+            }
+        });
+
+        closeChatBtn.addEventListener('click', () => {
+            chatWidget.style.display = 'none';
+        });
+
+        function appendChatMessage(sender, message, isSelf) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble', isSelf ? 'sent' : 'received');
+
+            if (!isSelf) {
+                const nameSpan = document.createElement('span');
+                nameSpan.classList.add('sender-name');
+                nameSpan.innerText = sender;
+                bubble.appendChild(nameSpan);
+            }
+
+            const textNode = document.createTextNode(message);
+            bubble.appendChild(textNode);
+
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text || !presenceChannel) return;
+
+            // Broadcast message to room members
+            await presenceChannel.send({
+                type: 'broadcast',
+                event: 'chat_message',
+                payload: {
+                    sender: currentUserName,
+                    message: text
+                }
+            });
+
+            // Display locally
+            appendChatMessage(currentUserName, text, true);
+            chatInput.value = '';
+        });
+
+        // Logout
         document.getElementById('logout-btn').addEventListener('click', async () => {
             await updateHeartbeat();
             if (presenceChannel) {
