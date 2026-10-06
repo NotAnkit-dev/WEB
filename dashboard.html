@@ -332,7 +332,7 @@
         </div>
     </div>
 
-    <!-- Real-Time Chat System Popup Box -->
+    <!-- Real-Time Chat System Popup Box (With Persistent History) -->
     <div id="chat-widget">
         <div class="chat-header">
             <span>💬 Community Live Chat</span>
@@ -342,7 +342,7 @@
             </div>
         </div>
         <div id="chat-messages">
-            <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin: auto 0;">Welcome to the chat room!</p>
+            <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin: auto 0;">Loading message history...</p>
         </div>
         <form id="chat-form" class="chat-footer">
             <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" required>
@@ -423,6 +423,7 @@
                     }
                 })
                 .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
+                    saveMessageLocally(payload.sender, payload.message, payload.timestamp);
                     appendChatMessage(payload.sender, payload.message, payload.timestamp, false);
                 })
                 .subscribe(async (status) => {
@@ -993,7 +994,7 @@
                 const isHeadAdmin = member.role === 'head_admin';
                 const roleBadge = isHeadAdmin 
                     ? `<span style="font-size: 11px; color: #ffd700; margin-left: 5px;">👑 Head Admin</span>` 
-                    : `<span style="font-size: 11px; color: #70d6ff; margin-left: 5px;">🛡️ Admin</span>`;
+                    : `<span style="font-size: 11px; color: #70d6ff; margin-left: 5px;">🛡️️ Admin</span>`;
 
                 const row = document.createElement('div');
                 row.style.background = 'rgba(255, 255, 255, 0.08)';
@@ -1126,7 +1127,7 @@
             });
         }
 
-        // ================= REAL-TIME CHAT SYSTEM =================
+        // ================= REAL-TIME & STORED CHAT SYSTEM =================
         const chatWidget = document.getElementById('chat-widget');
         const openChatBtn = document.getElementById('open-chat-btn');
         const closeChatBtn = document.getElementById('close-chat-btn');
@@ -1135,10 +1136,65 @@
         const chatInput = document.getElementById('chat-input');
         const chatMessages = document.getElementById('chat-messages');
 
+        let chatHistoryLoaded = false;
+
+        // Local storage helpers (fallback & instant offline retrieval)
+        function getStoredLocalMessages() {
+            try {
+                return JSON.parse(localStorage.getItem('community_chat_history')) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveMessageLocally(sender, message, timestamp) {
+            const list = getStoredLocalMessages();
+            list.push({ sender, message, timestamp });
+            if (list.length > 200) list.shift(); // keep latest 200 locally
+            localStorage.setItem('community_chat_history', JSON.stringify(list));
+        }
+
+        async function loadStoredChatMessages() {
+            chatMessages.innerHTML = '';
+
+            // Try loading from Supabase table 'chat_messages' first
+            const { data, error } = await supabaseClient
+                .from('chat_messages')
+                .select('*')
+                .order('created_at', { ascending: true })
+                .limit(100);
+
+            if (!error && data && data.length > 0) {
+                data.forEach(item => {
+                    const isSelf = currentUser && (item.sender === currentUserName || item.sender === currentUser.email);
+                    appendChatMessage(item.sender, item.message, item.created_at, isSelf);
+                });
+            } else {
+                // Fallback to local storage if table is empty or not yet provisioned
+                const localList = getStoredLocalMessages();
+                if (localList.length === 0) {
+                    chatMessages.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin: auto 0;">Welcome to the chat room! Start the conversation.</p>`;
+                } else {
+                    localList.forEach(item => {
+                        const isSelf = currentUser && (item.sender === currentUserName || item.sender === currentUser.email);
+                        appendChatMessage(item.sender, item.message, item.timestamp, isSelf);
+                    });
+                }
+            }
+
+            chatHistoryLoaded = true;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
         // Toggle chat opening
-        openChatBtn.addEventListener('click', () => {
-            chatWidget.style.display = chatWidget.style.display === 'flex' ? 'none' : 'flex';
-            if (chatWidget.style.display === 'flex') {
+        openChatBtn.addEventListener('click', async () => {
+            const isOpening = chatWidget.style.display !== 'flex';
+            chatWidget.style.display = isOpening ? 'flex' : 'none';
+
+            if (isOpening) {
+                if (!chatHistoryLoaded) {
+                    await loadStoredChatMessages();
+                }
                 chatInput.focus();
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
@@ -1152,12 +1208,16 @@
             toggleFullscreenBtn.title = 'Enter Fullscreen';
         });
 
-        // Fullscreen Toggle
-        toggleFullscreenBtn.addEventListener('click', () => {
+        // Fullscreen Toggle (Preserves all history and shows full date/time)
+        toggleFullscreenBtn.addEventListener('click', async () => {
             chatWidget.classList.toggle('fullscreen');
             const isFull = chatWidget.classList.contains('fullscreen');
             toggleFullscreenBtn.innerHTML = isFull ? '🗗' : '⛶';
             toggleFullscreenBtn.title = isFull ? 'Exit Fullscreen' : 'Enter Fullscreen';
+
+            if (!chatHistoryLoaded) {
+                await loadStoredChatMessages();
+            }
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
 
@@ -1172,6 +1232,11 @@
         }
 
         function appendChatMessage(sender, message, timestamp, isSelf) {
+            const emptyNotice = chatMessages.querySelector('p');
+            if (emptyNotice) {
+                emptyNotice.remove();
+            }
+
             const container = document.createElement('div');
             container.classList.add('chat-bubble-container', isSelf ? 'sent' : 'received');
 
@@ -1214,7 +1279,7 @@
 
             const now = new Date().toISOString();
 
-            // Broadcast message across active channel
+            // 1. Broadcast real-time message across active channel
             await presenceChannel.send({
                 type: 'broadcast',
                 event: 'chat_message',
@@ -1225,7 +1290,15 @@
                 }
             });
 
-            // Display locally immediately
+            // 2. Persist to Supabase Database
+            await supabaseClient.from('chat_messages').insert([
+                { sender: currentUserName, message: text, created_at: now }
+            ]);
+
+            // 3. Persist locally as fallback
+            saveMessageLocally(currentUserName, text, now);
+
+            // 4. Display locally immediately
             appendChatMessage(currentUserName, text, now, true);
             chatInput.value = '';
         });
