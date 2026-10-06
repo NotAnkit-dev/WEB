@@ -98,10 +98,29 @@
             border-radius: 6px;
             font-size: 14px;
             outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
         }
 
         input:focus, select:focus, textarea:focus {
             border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn,
+        .btn-edit,
+        .btn-save,
+        .btn-cancel,
+        .btn-danger {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn:hover:not(:disabled),
+        .btn-edit:hover,
+        .btn-save:hover,
+        .btn-cancel:hover,
+        .btn-danger:hover {
+            transform: scale(1.08);
         }
 
         .btn {
@@ -112,17 +131,26 @@
             border-radius: 6px;
             font-weight: 600;
             font-size: 14px;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        #scan-btn:not(:disabled):hover,
+        button[type="submit"]:hover {
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.75);
+        }
+
+        #import-csv-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        #import-csv-btn:hover {
+            box-shadow: 0 0 14px rgba(16, 185, 129, 0.75);
         }
 
         .btn-secondary {
@@ -132,50 +160,63 @@
 
         .btn-secondary:hover {
             background: #475569;
+            box-shadow: 0 0 14px rgba(148, 163, 184, 0.5);
         }
 
         .btn-edit {
             background: #eab308;
             color: #0f172a;
-            padding: 4px 8px;
+            padding: 5px 10px;
             font-size: 12px;
             border: none;
             border-radius: 4px;
             font-weight: 600;
-            cursor: pointer;
+        }
+
+        .btn-edit:hover {
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.8);
         }
 
         .btn-save {
             background: #10b981;
             color: white;
-            padding: 4px 8px;
+            padding: 5px 10px;
             font-size: 12px;
             border: none;
             border-radius: 4px;
             font-weight: 600;
-            cursor: pointer;
+        }
+
+        .btn-save:hover {
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
         }
 
         .btn-cancel {
             background: #64748b;
             color: white;
-            padding: 4px 8px;
+            padding: 5px 10px;
             font-size: 12px;
             border: none;
             border-radius: 4px;
             font-weight: 600;
-            cursor: pointer;
+        }
+
+        .btn-cancel:hover {
+            box-shadow: 0 0 12px rgba(100, 116, 139, 0.8);
         }
 
         .btn-danger {
             background: #ef4444;
             color: white;
-            padding: 4px 8px;
+            padding: 5px 10px;
             font-size: 12px;
             border: none;
             border-radius: 4px;
             font-weight: 600;
-            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
         }
 
         .progress-bar {
@@ -236,8 +277,14 @@
             font-weight: 600;
         }
 
+        tbody tr {
+            transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
         tbody tr:hover {
             background-color: #273549;
+            transform: scale(1.005);
+            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.2);
         }
 
         .status-badge {
@@ -248,7 +295,7 @@
         .action-cell-btns {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .table-edit-input {
@@ -266,10 +313,9 @@
                 <p style="font-size: 14px; color: #94a3b8;">Scan paper receipts with OCR and record accounts</p>
             </div>
             
-            <!-- TOP BAR: Import CSV, Export CSV, and Back Navigation -->
             <div class="header-actions">
                 <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
-                <button id="import-csv-btn" class="btn" style="background: linear-gradient(135deg, #10b981, #059669);">📥 Import CSV</button>
+                <button id="import-csv-btn" class="btn">📥 Import CSV</button>
                 <button id="export-btn" class="btn btn-secondary">Export to CSV</button>
                 <button onclick="window.location.href='dashboard.html'" class="btn btn-secondary" style="background: #475569;">Back</button>
                 <span id="import-status" style="font-size: 12px; color: #38bdf8; width: 100%; text-align: right;"></span>
@@ -277,7 +323,6 @@
         </header>
 
         <div class="layout-grid">
-            <!-- Left Card: Capture & OCR Scan -->
             <div class="card">
                 <h2>1. Upload / Capture Receipt</h2>
                 
@@ -301,7 +346,6 @@
                 </div>
             </div>
 
-            <!-- Right Card: Form Verification & Entry -->
             <div class="card">
                 <h2>2. Verify & Save Account Entry</h2>
                 
@@ -331,14 +375,7 @@
                         <select id="payment-mode">
                             <option value="Cash">Cash</option>
                             <option value="UPI / Online">UPI / Online</option>
-                            <option value="Cheque">Cheque</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Purpose / Category</label>
-                        <input type="text" id="receipt-purpose" placeholder="e.g. Donation, Sewa, Fee">
                     </div>
 
                     <button type="submit" class="btn" style="margin-top: 8px;">Save to Account Ledger</button>
@@ -346,7 +383,6 @@
             </div>
         </div>
 
-        <!-- Bottom Card: Account Ledger / Database Table -->
         <div class="card">
             <div class="table-controls">
                 <h2>3. Account Ledger Table</h2>
@@ -357,18 +393,15 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Rec. #</th>
-                            <th style="width: 14%;">Date</th>
-                            <th style="width: 20%;">Name</th>
-                            <th style="width: 13%;">Amount</th>
-                            <th style="width: 14%;">Mode</th>
-                            <th style="width: 12%;">Purpose</th>
+                            <th style="width: 18%;">Rec. #</th>
+                            <th style="width: 16%;">Date</th>
+                            <th style="width: 28%;">Name</th>
+                            <th style="width: 14%;">Amount</th>
+                            <th style="width: 12%;">Mode</th>
                             <th style="width: 12%;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body">
-                        <!-- Rows rendered via JavaScript -->
-                    </tbody>
+                    <tbody id="table-body"></tbody>
                 </table>
             </div>
         </div>
@@ -386,20 +419,16 @@
         const scanStatus = document.getElementById('scan-status');
         const rawOcr = document.getElementById('raw-ocr');
 
-        // Form fields
         const receiptNoInput = document.getElementById('receipt-no');
         const receiptDateInput = document.getElementById('receipt-date');
         const payerNameInput = document.getElementById('payer-name');
         const amountInput = document.getElementById('receipt-amount');
         const modeInput = document.getElementById('payment-mode');
-        const purposeInput = document.getElementById('receipt-purpose');
 
-        // CSV Elements
         const csvFileInput = document.getElementById('csv-file-input');
         const importCsvBtn = document.getElementById('import-csv-btn');
         const importStatus = document.getElementById('import-status');
 
-        // File selection preview
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -413,7 +442,6 @@
             }
         });
 
-        // OCR recognition
         scanBtn.addEventListener('click', async () => {
             const file = fileInput.files[0];
             if (!file) return;
@@ -451,23 +479,19 @@
             }
         });
 
-        // Text parser for receipt patterns
         function parseReceiptText(text) {
-            // Amount
             const amountRegex = /(?:total|amount|rs\.?|inr|\$)\s*[:.-]?\s*([0-9]+(?:[\.,][0-9]{2})?)/i;
             const amountMatch = text.match(amountRegex);
             if (amountMatch) {
                 amountInput.value = amountMatch[1].replace(',', '.');
             }
 
-            // Receipt Number
             const receiptNoRegex = /(?:receipt|rec|no|voucher)\s*[:.#-]?\s*([a-zA-Z0-9\/-]+)/i;
             const recMatch = text.match(receiptNoRegex);
             if (recMatch) {
                 receiptNoInput.value = recMatch[1];
             }
 
-            // Date
             const dateRegex = /\b(\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}|\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\b/;
             const dateMatch = text.match(dateRegex);
             if (dateMatch) {
@@ -481,7 +505,6 @@
                 receiptDateInput.value = new Date().toISOString().split('T')[0];
             }
 
-            // Name
             const nameRegex = /(?:received from|name|mr\.|mrs\.|shri)\s*[:.-]?\s*([a-zA-Z\s]+)/i;
             const nameMatch = text.match(nameRegex);
             if (nameMatch) {
@@ -489,7 +512,6 @@
             }
         }
 
-        // Form submission
         document.getElementById('receipt-form').addEventListener('submit', (e) => {
             e.preventDefault();
 
@@ -499,14 +521,12 @@
                 date: receiptDateInput.value,
                 name: payerNameInput.value.trim(),
                 amount: parseFloat(amountInput.value).toFixed(2),
-                mode: modeInput.value,
-                purpose: purposeInput.value.trim() || '-'
+                mode: modeInput.value
             };
 
             receiptsData.unshift(newEntry);
             saveAndRender();
 
-            // Clear inputs
             e.target.reset();
             rawOcr.value = '';
             preview.style.display = 'none';
@@ -518,7 +538,6 @@
             alert('Receipt entry successfully recorded!');
         });
 
-        // ================= IMPORT CSV FUNCTIONALITY (AT TOP) =================
         importCsvBtn.addEventListener('click', () => {
             csvFileInput.click();
         });
@@ -543,14 +562,14 @@
                 for (let i = 1; i < lines.length; i++) {
                     const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
                     if (cols.length >= 3) {
+                        const parsedMode = cols[4] && cols[4].toLowerCase().includes('upi') ? 'UPI / Online' : 'Cash';
                         imported.push({
                             id: Date.now() + i,
                             receiptNo: cols[0] || `REC-${Date.now() + i}`,
                             date: cols[1] || new Date().toISOString().split('T')[0],
                             name: cols[2] || 'Imported Entry',
                             amount: cols[3] ? parseFloat(cols[3]).toFixed(2) : '0.00',
-                            mode: cols[4] || 'Cash',
-                            purpose: cols[5] || '-'
+                            mode: parsedMode
                         });
                     }
                 }
@@ -564,19 +583,17 @@
             reader.readAsText(file);
         });
 
-        // Save & Render Table
         function saveAndRender() {
             localStorage.setItem('receipt_records', JSON.stringify(receiptsData));
             renderTable(receiptsData);
         }
 
-        // Render Table with Beside Edit and Delete Buttons
         function renderTable(data) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">No receipt records saved yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">No receipt records saved yet.</td></tr>`;
                 return;
             }
 
@@ -584,7 +601,6 @@
                 const tr = document.createElement('tr');
 
                 if (currentlyEditingId === item.id) {
-                    // Inline Edit Mode
                     tr.innerHTML = `
                         <td><input type="text" id="edit-no-${item.id}" value="${item.receiptNo}" class="table-edit-input"></td>
                         <td><input type="date" id="edit-date-${item.id}" value="${item.date}" class="table-edit-input"></td>
@@ -594,11 +610,8 @@
                             <select id="edit-mode-${item.id}" class="table-edit-input">
                                 <option value="Cash" ${item.mode === 'Cash' ? 'selected' : ''}>Cash</option>
                                 <option value="UPI / Online" ${item.mode === 'UPI / Online' ? 'selected' : ''}>UPI / Online</option>
-                                <option value="Cheque" ${item.mode === 'Cheque' ? 'selected' : ''}>Cheque</option>
-                                <option value="Bank Transfer" ${item.mode === 'Bank Transfer' ? 'selected' : ''}>Bank Transfer</option>
                             </select>
                         </td>
-                        <td><input type="text" id="edit-purpose-${item.id}" value="${item.purpose}" class="table-edit-input"></td>
                         <td>
                             <div class="action-cell-btns">
                                 <button class="btn-save" onclick="saveEdit(${item.id})">Save</button>
@@ -607,14 +620,12 @@
                         </td>
                     `;
                 } else {
-                    // Normal Display Mode with Edit beside Delete
                     tr.innerHTML = `
                         <td style="font-weight: 600; color: #38bdf8;">${item.receiptNo}</td>
                         <td>${item.date}</td>
                         <td>${item.name}</td>
                         <td>₹ ${item.amount}</td>
                         <td>${item.mode}</td>
-                        <td>${item.purpose}</td>
                         <td>
                             <div class="action-cell-btns">
                                 <button class="btn-edit" onclick="startEdit(${item.id})">Edit</button>
@@ -628,7 +639,6 @@
             });
         }
 
-        // Inline Edit Handlers
         window.startEdit = function(id) {
             currentlyEditingId = id;
             renderTable(receiptsData);
@@ -645,7 +655,6 @@
             const updatedName = document.getElementById(`edit-name-${id}`).value.trim();
             const updatedAmount = parseFloat(document.getElementById(`edit-amount-${id}`).value || 0).toFixed(2);
             const updatedMode = document.getElementById(`edit-mode-${id}`).value;
-            const updatedPurpose = document.getElementById(`edit-purpose-${id}`).value.trim() || '-';
 
             if (!updatedNo || !updatedName) {
                 alert('Receipt No. and Name cannot be empty.');
@@ -660,8 +669,7 @@
                         date: updatedDate,
                         name: updatedName,
                         amount: updatedAmount,
-                        mode: updatedMode,
-                        purpose: updatedPurpose
+                        mode: updatedMode
                     };
                 }
                 return item;
@@ -671,7 +679,6 @@
             saveAndRender();
         };
 
-        // Delete Row
         window.deleteEntry = function(id) {
             if (confirm('Delete this receipt entry?')) {
                 receiptsData = receiptsData.filter(item => item.id !== id);
@@ -679,33 +686,29 @@
             }
         };
 
-        // Search filter
         document.getElementById('search-input').addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase();
             const filtered = receiptsData.filter(item => 
                 item.receiptNo.toLowerCase().includes(q) ||
                 item.name.toLowerCase().includes(q) ||
-                item.purpose.toLowerCase().includes(q) ||
                 item.mode.toLowerCase().includes(q)
             );
             renderTable(filtered);
         });
 
-        // Export to CSV
         document.getElementById('export-btn').addEventListener('click', () => {
             if (receiptsData.length === 0) {
                 alert('No data to export.');
                 return;
             }
 
-            const headers = ['Receipt No', 'Date', 'Name', 'Amount', 'Payment Mode', 'Purpose'];
+            const headers = ['Receipt No', 'Date', 'Name', 'Amount', 'Payment Mode'];
             const rows = receiptsData.map(r => [
                 `"${r.receiptNo}"`,
                 `"${r.date}"`,
                 `"${r.name}"`,
                 `"${r.amount}"`,
-                `"${r.mode}"`,
-                `"${r.purpose}"`
+                `"${r.mode}"`
             ]);
 
             const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -718,7 +721,6 @@
             document.body.removeChild(link);
         });
 
-        // Initialize table
         renderTable(receiptsData);
     </script>
 </body>
