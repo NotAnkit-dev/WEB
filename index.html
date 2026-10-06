@@ -3,34 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community Login</title>
+    <title>Community Portal - Login</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="login-background">
-        <div class="login-card" style="width: 440px;">
-            <!-- Normal Login View -->
-            <div id="login-view">
-                <h2 style="font-size: 24px; margin-bottom: 8px;">Community Portal 🛡️</h2>
-                <p style="text-align: center; color: rgba(255,255,255,0.7); margin-bottom: 24px; font-size: 14px;">Sign in to your member account</p>
+        <div class="login-card" style="width: 380px; gap: 16px; text-align: center;">
+            <h2 style="font-size: 24px; color: #38bdf8;">Community Portal 🛡️</h2>
+            <p style="font-size: 14px; color: #94a3b8; margin-top: -6px;">Enter credentials to access dashboard</p>
 
-                <form id="login-form" style="display: flex; flex-direction: column; gap: 14px;">
-                    <input type="email" id="login-email" placeholder="Email Address" required style="padding: 13px; font-size: 15px;">
-                    <input type="password" id="login-password" placeholder="Password" required style="padding: 13px; font-size: 15px;">
-                    <button type="submit" id="login-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px; margin-top: 5px;">Sign In</button>
-                </form>
-            </div>
+            <form id="login-form" style="display: flex; flex-direction: column; gap: 14px; text-align: left;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="login-email" style="font-size: 13px; color: #cbd5e1;">Email Address</label>
+                    <input type="email" id="login-email" placeholder="name@example.com" required style="padding: 12px; font-size: 14px;">
+                </div>
 
-            <!-- Create Password View (Triggered by Gmail Link) -->
-            <div id="create-password-view" style="display: none; flex-direction: column; gap: 14px;">
-                <h2 style="font-size: 24px; margin-bottom: 4px; text-align: center;">Welcome! 👋</h2>
-                <p style="text-align: center; color: rgba(255,255,255,0.8); margin: 0 0 10px 0; font-size: 14px;">Please create a password for your account.</p>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="login-password" style="font-size: 13px; color: #cbd5e1;">Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required style="padding: 12px; font-size: 14px;">
+                </div>
 
-                <input type="password" id="set-new-password" placeholder="Enter New Password" required style="padding: 13px; font-size: 15px;">
-                <input type="password" id="confirm-new-password" placeholder="Confirm New Password" required style="padding: 13px; font-size: 15px;">
-                <button id="save-password-btn" class="sign-in-btn" style="padding: 14px; font-size: 16px; background: linear-gradient(135deg, #00b09b, #96c93d);">Set Password & Enter Dashboard</button>
-            </div>
+                <button type="submit" id="submit-btn" class="sign-in-btn" style="padding: 14px; font-size: 15px; margin-top: 6px;">Sign In</button>
+            </form>
+
+            <p id="error-message" style="font-size: 13px; color: #ef4444; min-height: 18px; margin: 0;"></p>
         </div>
     </div>
 
@@ -39,40 +36,28 @@
         const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_y4NF8jqtRbjEZbTTSLWhaw_KohHngqU';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-        const loginView = document.getElementById('login-view');
-        const createPasswordView = document.getElementById('create-password-view');
-
-        // Check if arriving via password setup/recovery token
-        supabaseClient.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'PASSWORD_RECOVERY' || (session && window.location.hash.includes('type=recovery'))) {
-                loginView.style.display = 'none';
-                createPasswordView.style.display = 'flex';
-            } else if (event === 'SIGNED_IN' && !window.location.hash.includes('type=recovery')) {
-                window.location.href = 'dashboard.html';
-            }
-        });
-
-        async function checkSession() {
-            if (window.location.hash.includes('type=recovery')) {
-                loginView.style.display = 'none';
-                createPasswordView.style.display = 'flex';
-                return;
-            }
+        async function verifyExistingSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 window.location.href = 'dashboard.html';
             }
         }
-        checkSession();
+        verifyExistingSession();
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        const loginForm = document.getElementById('login-form');
+        const emailInput = document.getElementById('login-email');
+        const passwordInput = document.getElementById('login-password');
+        const submitBtn = document.getElementById('submit-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value;
+            errorMessage.innerText = '';
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Verifying...';
 
-            const btn = document.getElementById('login-btn');
-            btn.disabled = true;
-            btn.innerText = 'Signing in...';
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
 
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
@@ -80,42 +65,10 @@
             });
 
             if (error) {
-                alert('Sign in failed: ' + error.message);
-                btn.disabled = false;
-                btn.innerText = 'Sign In';
+                errorMessage.innerText = error.message;
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Sign In';
             } else {
-                window.location.href = 'dashboard.html';
-            }
-        });
-
-        document.getElementById('save-password-btn').addEventListener('click', async () => {
-            const newPassword = document.getElementById('set-new-password').value;
-            const confirmPassword = document.getElementById('confirm-new-password').value;
-
-            if (!newPassword || newPassword.length < 6) {
-                alert('Password must be at least 6 characters long.');
-                return;
-            }
-
-            if (newPassword !== confirmPassword) {
-                alert('Passwords do not match. Please re-enter.');
-                return;
-            }
-
-            const saveBtn = document.getElementById('save-password-btn');
-            saveBtn.disabled = true;
-            saveBtn.innerText = 'Saving password...';
-
-            const { data, error } = await supabaseClient.auth.updateUser({
-                password: newPassword
-            });
-
-            if (error) {
-                alert('Error setting password: ' + error.message);
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'Set Password & Enter Dashboard';
-            } else {
-                alert('Password set successfully! Welcome to the dashboard.');
                 window.location.href = 'dashboard.html';
             }
         });
