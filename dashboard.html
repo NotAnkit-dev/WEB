@@ -19,6 +19,10 @@
             <div id="main-view" style="display: flex; flex-direction: column; gap: 15px;">
                 <button id="goto-code-btn" class="sign-in-btn" style="padding: 16px; font-size: 16px;">Add New Member</button>
                 <button id="goto-people-btn" class="register-btn" style="padding: 16px; font-size: 16px; width: 100%;">People's Info</button>
+                
+                <!-- Opens the dedicated Receipts & OCR file -->
+                <button onclick="window.location.href='receipts.html'" class="sign-in-btn" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #f59e0b, #d97706);">🧾 Receipt Book (OCR Scanner)</button>
+                
                 <button id="goto-status-btn" class="sign-in-btn" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #00b09b, #96c93d);">Online & Activity Status</button>
             </div>
 
@@ -85,7 +89,7 @@
                 <button id="back-from-presence-btn" class="register-btn" style="padding: 14px; font-size: 16px; width: 100%;">Back</button>
             </div>
 
-            <!-- STEP 7: Profile Data Form (All Fields Required) -->
+            <!-- STEP 7: Profile Data Form -->
             <div id="add-info-view" style="display: none; flex-direction: column; gap: 12px;">
                 <h3 id="info-form-title" style="margin: 0; font-size: 18px; text-align: center;">Add Profile Data</h3>
                 <input type="text" id="info-name" placeholder="Full Name *" required style="padding: 12px; font-size: 15px;">
@@ -359,7 +363,6 @@
             }
         });
 
-        // Save / Update Member Profile
         document.getElementById('save-info-btn').addEventListener('click', async () => {
             const name = document.getElementById('info-name').value.trim();
             const email = document.getElementById('info-email').value.trim();
@@ -513,7 +516,7 @@
 
                 // Gmail Button
                 const gmailBtn = document.createElement('button');
-                gmailBtn.innerText = '✉️ Gmail';
+                gmailBtn.innerText = '✉ Gmail';
                 gmailBtn.style.background = 'rgba(234, 67, 53, 0.2)';
                 gmailBtn.style.color = '#ea4335';
                 gmailBtn.style.border = '1px solid rgba(234, 67, 53, 0.4)';
