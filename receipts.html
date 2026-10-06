@@ -3,256 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Book (OCR)</title>
+    <title>Receipt Book & CSV Records</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="login-background">
-        <div class="login-card" style="width: 720px; min-height: 520px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="login-card" style="width: 760px; min-height: 540px; display: flex; flex-direction: column; gap: 16px;">
             
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;">
-                <h2 style="font-size: 22px; margin: 0;">🧾 Receipt Book Management</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button id="export-csv-btn" class="register-btn" style="padding: 6px 12px; font-size: 13px;">Export CSV</button>
-                    <button onclick="window.location.href='dashboard.html'" class="register-btn" style="padding: 6px 12px; font-size: 13px; background: rgba(255,0,0,0.2);">Back</button>
+            <!-- Header Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px;">
+                <h2 style="font-size: 22px; margin: 0;">🧾 Receipt Book & CSV Records</h2>
+                <button onclick="window.location.href='dashboard.html'" class="register-btn" style="padding: 6px 14px; font-size: 13px; background: rgba(255,0,0,0.25);">Back to Dashboard</button>
+            </div>
+
+            <!-- Top CSV Management Bar -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <!-- Hidden File Input Triggered by Button -->
+                        <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                        <button id="import-csv-btn" class="sign-in-btn" style="padding: 9px 18px; font-size: 14px; background: linear-gradient(135deg, #0284c7, #0ea5e9);">📥 Import CSV</button>
+                        <span id="import-status" style="font-size: 13px; color: #38bdf8;"></span>
+                    </div>
+                    <button id="export-csv-btn" class="register-btn" style="padding: 8px 14px; font-size: 13px;">Export CSV</button>
+                </div>
+
+                <!-- CSV Records List Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 15px; color: #cbd5e1;">CSV Records List</h3>
+                    <input type="text" id="search-csv-input" placeholder="Search records..." style="padding: 6px 10px; font-size: 12px; width: 180px; border-radius: 6px;">
+                </div>
+
+                <!-- Scrollable Record List with Beside Action Buttons -->
+                <div id="csv-items-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+                    <!-- Items rendered dynamically -->
                 </div>
             </div>
 
-            <!-- OCR Capture Area -->
-            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-                <label style="font-size: 13px; color: #cbd5e1; font-weight: bold;">Scan Physical Receipt:</label>
-                <input type="file" id="receipt-upload" accept="image/*" capture="environment" style="padding: 8px;">
-                <img id="receipt-preview" alt="Preview" style="display: none; max-height: 150px; object-fit: contain; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.3);">
-                
-                <button id="run-ocr-btn" class="sign-in-btn" style="padding: 10px; font-size: 14px; background: linear-gradient(135deg, #f59e0b, #d97706);" disabled>Scan Receipt Text (OCR)</button>
-                <span id="ocr-status" style="font-size: 13px; text-align: center; color: #38bdf8;"></span>
+            <!-- Optional OCR Quick Scan Section -->
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <h4 style="margin: 0; font-size: 14px; color: #cbd5e1;">Scan Physical Receipt via OCR</h4>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="file" id="receipt-upload" accept="image/*" capture="environment" style="padding: 6px; font-size: 12px; flex: 1;">
+                    <button id="run-ocr-btn" class="sign-in-btn" style="padding: 8px 14px; font-size: 13px; background: linear-gradient(135deg, #f59e0b, #d97706);" disabled>Scan Image</button>
+                </div>
+                <span id="ocr-status" style="font-size: 12px; color: #38bdf8;"></span>
             </div>
 
-            <!-- Entry Form -->
+            <!-- Manual Add Form -->
             <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <input type="text" id="rec-number" placeholder="Receipt No. *" style="padding: 10px; font-size: 14px;">
-                    <input type="date" id="rec-date" style="padding: 10px; font-size: 14px;">
+                <h4 style="margin: 0; font-size: 14px; color: #cbd5e1;">Add / Log Record Manually</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px;">
+                    <input type="text" id="manual-rec-no" placeholder="Receipt / ID *" style="padding: 9px; font-size: 13px;">
+                    <input type="text" id="manual-name" placeholder="Name / Title *" style="padding: 9px; font-size: 13px;">
+                    <input type="text" id="manual-amount" placeholder="Amount / Detail *" style="padding: 9px; font-size: 13px;">
+                    <input type="text" id="manual-note" placeholder="Mode / Note" style="padding: 9px; font-size: 13px;">
                 </div>
-                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 8px;">
-                    <input type="text" id="rec-name" placeholder="Payer / Contributor Name *" style="padding: 10px; font-size: 14px;">
-                    <input type="number" id="rec-amount" step="0.01" placeholder="Amount (₹) *" style="padding: 10px; font-size: 14px;">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px;">
-                    <select id="rec-mode" style="padding: 10px; font-size: 14px; background: rgba(255,255,255,0.2); color: white;">
-                        <option value="Cash" style="color: black;">Cash</option>
-                        <option value="UPI / Online" style="color: black;">UPI / Online</option>
-                        <option value="Cheque" style="color: black;">Cheque</option>
-                    </select>
-                    <input type="text" id="rec-purpose" placeholder="Purpose / Category (e.g. Sewa)" style="padding: 10px; font-size: 14px;">
-                </div>
-                <button id="save-receipt-btn" class="sign-in-btn" style="padding: 12px; font-size: 15px;">Save to Ledger</button>
-            </div>
-
-            <!-- Receipts Ledger Table -->
-            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; max-height: 200px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.2); color: #94a3b8;">
-                            <th style="padding: 8px;">No.</th>
-                            <th style="padding: 8px;">Date</th>
-                            <th style="padding: 8px;">Name</th>
-                            <th style="padding: 8px;">Amount</th>
-                            <th style="padding: 8px;">Mode</th>
-                            <th style="padding: 8px;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="receipts-tbody"></tbody>
-                </table>
+                <button id="add-manual-record-btn" class="sign-in-btn" style="padding: 11px; font-size: 14px;">Add to Records List</button>
             </div>
 
         </div>
     </div>
 
     <script>
-        let receipts = JSON.parse(localStorage.getItem('saved_receipts')) || [];
+        let csvRecords = JSON.parse(localStorage.getItem('csv_records')) || [];
+        let currentlyEditingId = null;
 
-        const fileInput = document.getElementById('receipt-upload');
-        const preview = document.getElementById('receipt-preview');
-        const scanBtn = document.getElementById('run-ocr-btn');
-        const statusText = document.getElementById('ocr-status');
+        const csvFileInput = document.getElementById('csv-file-input');
+        const importBtn = document.getElementById('import-csv-btn');
+        const exportBtn = document.getElementById('export-csv-btn');
+        const importStatus = document.getElementById('import-status');
+        const csvItemsList = document.getElementById('csv-items-list');
+        const searchInput = document.getElementById('search-csv-input');
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-                scanBtn.disabled = false;
-                statusText.innerText = 'Photo loaded. Click "Scan Receipt Text" to read.';
-            } else {
-                preview.style.display = 'none';
-                scanBtn.disabled = true;
-            }
+        // OCR Elements
+        const receiptUpload = document.getElementById('receipt-upload');
+        const runOcrBtn = document.getElementById('run-ocr-btn');
+        const ocrStatus = document.getElementById('ocr-status');
+
+        // 1. File Upload Trigger
+        importBtn.addEventListener('click', () => {
+            csvFileInput.click();
         });
 
-        scanBtn.addEventListener('click', async () => {
-            const file = fileInput.files[0];
+        // 2. CSV File Parse and Ingest
+        csvFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
             if (!file) return;
 
-            scanBtn.disabled = true;
-            statusText.innerText = 'Reading image with OCR...';
+            importStatus.innerText = 'Reading CSV file...';
+            const reader = new FileReader();
 
-            try {
-                const result = await Tesseract.recognize(
-                    file,
-                    'eng',
-                    {
-                        logger: (m) => {
-                            if (m.status === 'recognizing text') {
-                                statusText.innerText = `Scanning: ${Math.round(m.progress * 100)}%`;
-                            }
-                        }
+            reader.onload = function(event) {
+                const text = event.target.result;
+                const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+                if (lines.length <= 1) {
+                    importStatus.innerText = 'File contains no data rows.';
+                    return;
+                }
+
+                const newEntries = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.replace(/^"|"$/g, '').trim());
+                    if (values.length >= 2) {
+                        newEntries.push({
+                            id: Date.now() + i,
+                            col1: values[0] || 'N/A',
+                            col2: values[1] || 'Unnamed',
+                            col3: values[2] || '0.00',
+                            col4: values[3] || '-'
+                        });
                     }
-                );
-
-                const text = result.data.text;
-                statusText.innerText = 'Scan finished! Values filled in below.';
-
-                // Detect Amount
-                const amountMatch = text.match(/(?:total|amount|rs\.?|inr|\$)\s*[:.-]?\s*([0-9]+(?:[\.,][0-9]{2})?)/i);
-                if (amountMatch) {
-                    document.getElementById('rec-amount').value = amountMatch[1].replace(',', '.');
                 }
 
-                // Detect Receipt Number
-                const recMatch = text.match(/(?:receipt|rec|no|voucher)\s*[:.#-]?\s*([a-zA-Z0-9\/-]+)/i);
-                if (recMatch) {
-                    document.getElementById('rec-number').value = recMatch[1];
-                }
+                csvRecords = [...newEntries, ...csvRecords];
+                saveRecords();
+                renderCsvList();
 
-                // Detect Date
-                const dateMatch = text.match(/\b(\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}|\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\b/);
-                if (dateMatch) {
-                    const parts = dateMatch[0].replace(/[\/.]/g, '-').split('-');
-                    if (parts[0].length === 4) {
-                        document.getElementById('rec-date').value = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-                    } else if (parts[2].length === 4) {
-                        document.getElementById('rec-date').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                    }
-                } else {
-                    document.getElementById('rec-date').value = new Date().toISOString().split('T')[0];
-                }
-
-                // Detect Name
-                const nameMatch = text.match(/(?:received from|name|mr\.|mrs\.|shri)\s*[:.-]?\s*([a-zA-Z\s]+)/i);
-                if (nameMatch) {
-                    document.getElementById('rec-name').value = nameMatch[1].slice(0, 25).trim();
-                }
-
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = 'Could not read receipt clearly. Please take a clearer picture.';
-            } finally {
-                scanBtn.disabled = false;
-            }
-        });
-
-        document.getElementById('save-receipt-btn').addEventListener('click', () => {
-            const no = document.getElementById('rec-number').value.trim();
-            const date = document.getElementById('rec-date').value;
-            const name = document.getElementById('rec-name').value.trim();
-            const amount = document.getElementById('rec-amount').value;
-            const mode = document.getElementById('rec-mode').value;
-            const purpose = document.getElementById('rec-purpose').value.trim();
-
-            if (!no || !name || !amount) {
-                alert('Please enter at least the Receipt No., Name, and Amount.');
-                return;
-            }
-
-            const item = {
-                id: Date.now(),
-                no: no,
-                date: date || new Date().toISOString().split('T')[0],
-                name: name,
-                amount: parseFloat(amount).toFixed(2),
-                mode: mode,
-                purpose: purpose || '-'
+                importStatus.innerText = `Imported ${newEntries.length} items!`;
+                csvFileInput.value = '';
             };
 
-            receipts.unshift(item);
-            localStorage.setItem('saved_receipts', JSON.stringify(receipts));
-            renderTable();
-
-            // Reset
-            document.getElementById('rec-number').value = '';
-            document.getElementById('rec-name').value = '';
-            document.getElementById('rec-amount').value = '';
-            document.getElementById('rec-purpose').value = '';
-            preview.style.display = 'none';
-            fileInput.value = '';
-            scanBtn.disabled = true;
-            statusText.innerText = '';
-
-            alert('Receipt successfully added to ledger!');
+            reader.readAsText(file);
         });
 
-        function renderTable() {
-            const tbody = document.getElementById('receipts-tbody');
-            tbody.innerHTML = '';
+        // 3. Render List (with Edit and Delete beside each item)
+        function renderCsvList(itemsToRender = null) {
+            const list = itemsToRender || csvRecords;
+            csvItemsList.innerHTML = '';
 
-            if (receipts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="padding: 10px; text-align: center; color: rgba(255,255,255,0.5);">No receipts recorded yet.</td></tr>`;
+            if (list.length === 0) {
+                csvItemsList.innerHTML = `<p style="text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; margin: 12px 0;">No records found. Click "Import CSV" to populate.</p>`;
                 return;
             }
 
-            receipts.forEach(r => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
-                tr.innerHTML = `
-                    <td style="padding: 8px; color: #38bdf8;">${r.no}</td>
-                    <td style="padding: 8px;">${r.date}</td>
-                    <td style="padding: 8px;">${r.name}</td>
-                    <td style="padding: 8px;">₹${r.amount}</td>
-                    <td style="padding: 8px;">${r.mode}</td>
-                    <td style="padding: 8px;">
-                        <button onclick="removeReceipt(${r.id})" style="background: rgba(255,75,75,0.25); color: #ff8080; border: 1px solid rgba(255,75,75,0.4); border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer;">Delete</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            list.forEach(item => {
+                const row = document.createElement('div');
+                row.style.background = 'rgba(255, 255, 255, 0.08)';
+                row.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                row.style.borderRadius = '8px';
+                row.style.padding = '10px 14px';
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.gap = '10px';
+
+                if (currentlyEditingId === item.id) {
+                    // Inline Edit Form Mode
+                    row.innerHTML = `
+                        <div style="display: flex; gap: 8px; flex: 1; flex-wrap: wrap;">
+                            <input type="text" id="edit-col1-${item.id}" value="${item.col1}" style="padding: 6px; font-size: 12px; flex: 1; min-width: 70px;">
+                            <input type="text" id="edit-col2-${item.id}" value="${item.col2}" style="padding: 6px; font-size: 12px; flex: 1.5; min-width: 90px;">
+                            <input type="text" id="edit-col3-${item.id}" value="${item.col3}" style="padding: 6px; font-size: 12px; flex: 1; min-width: 70px;">
+                            <input type="text" id="edit-col4-${item.id}" value="${item.col4}" style="padding: 6px; font-size: 12px; flex: 1; min-width: 70px;">
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                            <button onclick="saveEdit(${item.id})" class="sign-in-btn" style="padding: 5px 10px; font-size: 12px;">Save</button>
+                            <button onclick="cancelEdit()" class="register-btn" style="padding: 5px 10px; font-size: 12px;">Cancel</button>
+                        </div>
+                    `;
+                } else {
+                    // Normal Display Mode
+                    row.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <div style="font-size: 14px; font-weight: bold; color: #38bdf8;">
+                                ${item.col1} <span style="color: white; font-weight: normal;">— ${item.col2}</span>
+                            </div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7);">
+                                Amount/Detail: <strong>${item.col3}</strong> ${item.col4 ? '| ' + item.col4 : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
+                            <button onclick="startEdit(${item.id})" class="register-btn" style="padding: 5px 10px; font-size: 12px;">Edit</button>
+                            <button onclick="deleteRecord(${item.id})" style="background: rgba(255,75,75,0.25); color: #ff8080; border: 1px solid rgba(255,75,75,0.4); border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer;">Delete</button>
+                        </div>
+                    `;
+                }
+
+                csvItemsList.appendChild(row);
             });
         }
 
-        window.removeReceipt = function(id) {
-            if (confirm('Delete this record?')) {
-                receipts = receipts.filter(r => r.id !== id);
-                localStorage.setItem('saved_receipts', JSON.stringify(receipts));
-                renderTable();
+        function saveRecords() {
+            localStorage.setItem('csv_records', JSON.stringify(csvRecords));
+        }
+
+        // 4. Action Handlers: Edit, Cancel, Save, Delete
+        window.startEdit = function(id) {
+            currentlyEditingId = id;
+            renderCsvList();
+        };
+
+        window.cancelEdit = function() {
+            currentlyEditingId = null;
+            renderCsvList();
+        };
+
+        window.saveEdit = function(id) {
+            const updatedCol1 = document.getElementById(`edit-col1-${id}`).value.trim();
+            const updatedCol2 = document.getElementById(`edit-col2-${id}`).value.trim();
+            const updatedCol3 = document.getElementById(`edit-col3-${id}`).value.trim();
+            const updatedCol4 = document.getElementById(`edit-col4-${id}`).value.trim();
+
+            csvRecords = csvRecords.map(item => {
+                if (item.id === id) {
+                    return { ...item, col1: updatedCol1, col2: updatedCol2, col3: updatedCol3, col4: updatedCol4 };
+                }
+                return item;
+            });
+
+            saveRecords();
+            currentlyEditingId = null;
+            renderCsvList();
+        };
+
+        window.deleteRecord = function(id) {
+            if (confirm('Delete this record from the list?')) {
+                csvRecords = csvRecords.filter(item => item.id !== id);
+                saveRecords();
+                renderCsvList();
             }
         };
 
-        document.getElementById('export-csv-btn').addEventListener('click', () => {
-            if (receipts.length === 0) {
-                alert('No receipts to export.');
+        // 5. Search Filter
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                renderCsvList();
                 return;
             }
 
-            const headers = ['Receipt No', 'Date', 'Name', 'Amount', 'Payment Mode', 'Purpose'];
-            const rows = receipts.map(r => [
-                `"${r.no}"`,
-                `"${r.date}"`,
-                `"${r.name}"`,
-                `"${r.amount}"`,
-                `"${r.mode}"`,
-                `"${r.purpose}"`
+            const filtered = csvRecords.filter(item => 
+                item.col1.toLowerCase().includes(query) ||
+                item.col2.toLowerCase().includes(query) ||
+                item.col3.toLowerCase().includes(query) ||
+                item.col4.toLowerCase().includes(query)
+            );
+            renderCsvList(filtered);
+        });
+
+        // 6. Manual Entry
+        document.getElementById('add-manual-record-btn').addEventListener('click', () => {
+            const col1 = document.getElementById('manual-rec-no').value.trim();
+            const col2 = document.getElementById('manual-name').value.trim();
+            const col3 = document.getElementById('manual-amount').value.trim();
+            const col4 = document.getElementById('manual-note').value.trim();
+
+            if (!col1 || !col2 || !col3) {
+                alert('Please provide at least a Receipt/ID, Name, and Amount.');
+                return;
+            }
+
+            csvRecords.unshift({
+                id: Date.now(),
+                col1: col1,
+                col2: col2,
+                col3: col3,
+                col4: col4 || '-'
+            });
+
+            saveRecords();
+            renderCsvList();
+
+            document.getElementById('manual-rec-no').value = '';
+            document.getElementById('manual-name').value = '';
+            document.getElementById('manual-amount').value = '';
+            document.getElementById('manual-note').value = '';
+        });
+
+        // 7. Export CSV
+        exportBtn.addEventListener('click', () => {
+            if (csvRecords.length === 0) {
+                alert('No records to export.');
+                return;
+            }
+
+            const headers = ['Receipt_ID', 'Name', 'Amount', 'Note'];
+            const rows = csvRecords.map(r => [
+                `"${r.col1}"`,
+                `"${r.col2}"`,
+                `"${r.col3}"`,
+                `"${r.col4}"`
             ]);
 
             const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
             const link = document.createElement('a');
-            link.setAttribute('href', encodeURI(csvContent));
-            link.setAttribute('download', `receipts_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `records_export_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         });
 
-        renderTable();
+        // 8. OCR Processor
+        receiptUpload.addEventListener('change', (e) => {
+            runOcrBtn.disabled = !e.target.files.length;
+            ocrStatus.innerText = e.target.files.length ? 'Ready to scan.' : '';
+        });
+
+        runOcrBtn.addEventListener('click', async () => {
+            const file = receiptUpload.files[0];
+            if (!file) return;
+
+            runOcrBtn.disabled = true;
+            ocrStatus.innerText = 'Scanning text...';
+
+            try {
+                const result = await Tesseract.recognize(file, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            ocrStatus.innerText = `Scanning: ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                });
+
+                const text = result.data.text;
+                ocrStatus.innerText = 'Scan complete! Populated manual form.';
+
+                const amountMatch = text.match(/(?:total|amount|rs\.?|inr|\$)\s*[:.-]?\s*([0-9]+(?:[\.,][0-9]{2})?)/i);
+                if (amountMatch) document.getElementById('manual-amount').value = amountMatch[1];
+
+                const recMatch = text.match(/(?:receipt|rec|no|voucher)\s*[:.#-]?\s*([a-zA-Z0-9\/-]+)/i);
+                if (recMatch) document.getElementById('manual-rec-no').value = recMatch[1];
+
+                const nameMatch = text.match(/(?:received from|name|mr\.|mrs\.|shri)\s*[:.-]?\s*([a-zA-Z\s]+)/i);
+                if (nameMatch) document.getElementById('manual-name').value = nameMatch[1].slice(0, 25).trim();
+
+            } catch (err) {
+                console.error(err);
+                ocrStatus.innerText = 'OCR scan failed. Please try a clearer image.';
+            } finally {
+                runOcrBtn.disabled = false;
+            }
+        });
+
+        // Initial render
+        renderCsvList();
     </script>
 </body>
 </html>
