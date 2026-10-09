@@ -7,32 +7,31 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-  const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-  const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
-  // Standard Twilio WhatsApp Sandbox number
+  const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID") || "AC21e7f3efe011828cab38cc9fc3d93ffd";
+  const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") || "1e4e5fa08c59912c0a3eb07dac74d5e4";
+  const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER") || "+17372508034";
   const TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886";
 
   try {
     const { recipient, channels, message } = await req.json();
 
-    const results = {
+    const results: Record<string, unknown> = {
       email: false,
       sms: false,
       whatsapp: false,
+      errors: {},
     };
 
-    // Format phone number with +
-    const rawDigits = recipient?.phone ? recipient.phone.replace(/[^0-9]/g, "") : "";
+    // Ensure phone has leading + and strip non-digit characters
+    let rawDigits = (recipient?.phone || "").toString().replace(/[^0-9]/g, "");
     const formattedPhone = rawDigits.startsWith("+") ? rawDigits : `+${rawDigits}`;
 
-    // 1. Send Background Email via Resend
+    // 1. Resend Email Dispatch
     if (channels?.email && recipient?.email && RESEND_API_KEY) {
       try {
         const emailRes = await fetch("https://api.resend.com/emails", {
@@ -44,21 +43,20 @@ serve(async (req) => {
           body: JSON.stringify({
             from: "CommunityBot <onboarding@resend.dev>",
             to: [recipient.email],
-            subject: `Community Notification for ${recipient.name}`,
+            subject: `Community Notification for ${recipient.name || "Member"}`,
             text: message,
           }),
         });
         results.email = emailRes.ok;
       } catch (err) {
-        console.error("Resend Error:", err);
+        (results.errors as Record<string, unknown>).email = String(err);
       }
     }
 
-    // 2. Prepare Twilio Basic Auth
-    const twilioAuth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+    const twilioCredentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
 
-    // 3. Send Carrier SMS via Twilio
-    if (channels?.sms && rawDigits && TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE_NUMBER) {
+    // 2. Twilio SMS Dispatch
+    if (channels?.sms && rawDigits) {
       try {
         const smsParams = new URLSearchParams({
           To: formattedPhone,
@@ -71,20 +69,28 @@ serve(async (req) => {
           {
             method: "POST",
             headers: {
-              "Authorization": `Basic ${twilioAuth}`,
+              "Authorization": `Basic ${twilioCredentials}`,
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: smsParams.toString(),
           }
         );
-        results.sms = smsRes.ok;
+
+        const smsData = await smsRes.json();
+        if (!smsRes.ok) {
+          console.error("Twilio SMS failure payload:", smsData);
+          (results.errors as Record<string, unknown>).sms = smsData.message || smsData;
+        } else {
+          results.sms = true;
+        }
       } catch (err) {
-        console.error("Twilio SMS Error:", err);
+        console.error("SMS Network Error:", err);
+        (results.errors as Record<string, unknown>).sms = String(err);
       }
     }
 
-    // 4. Send WhatsApp via Twilio WhatsApp API
-    if (channels?.whatsapp && rawDigits && TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+    // 3. Twilio WhatsApp Dispatch
+    if (channels?.whatsapp && rawDigits) {
       try {
         const waParams = new URLSearchParams({
           To: `whatsapp:${formattedPhone}`,
@@ -97,23 +103,32 @@ serve(async (req) => {
           {
             method: "POST",
             headers: {
-              "Authorization": `Basic ${twilioAuth}`,
+              "Authorization": `Basic ${twilioCredentials}`,
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: waParams.toString(),
           }
         );
-        results.whatsapp = waRes.ok;
+
+        const waData = await waRes.json();
+        if (!waRes.ok) {
+          console.error("Twilio WhatsApp failure payload:", waData);
+          (results.errors as Record<string, unknown>).whatsapp = waData.message || waData;
+        } else {
+          results.whatsapp = true;
+        }
       } catch (err) {
-        console.error("Twilio WhatsApp Error:", err);
+        console.error("WhatsApp Network Error:", err);
+        (results.errors as Record<string, unknown>).whatsapp = String(err);
       }
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: errorMsg }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
