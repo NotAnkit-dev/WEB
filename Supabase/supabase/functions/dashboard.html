@@ -17,7 +17,7 @@
             gap: 10px;
         }
 
-        /* Chat Button styling: matching log out size, light blue into blue gradient */
+        /* Chat Button styling */
         .chat-toggle-btn {
             background: linear-gradient(135deg, #7dd3fc, #0284c7);
             border: none;
@@ -54,7 +54,6 @@
             transition: all 0.25s ease-in-out;
         }
 
-        /* Full Screen Chat Mode */
         #chat-widget.fullscreen {
             position: fixed;
             inset: 0;
@@ -139,7 +138,6 @@
             max-width: 90%;
         }
 
-        /* Top Meta Row (Sender Name & Timestamp) */
         .chat-meta-row {
             display: flex;
             align-items: center;
@@ -165,7 +163,6 @@
             color: #f59e0b;
         }
 
-        /* Date/Time badge (Initially hidden in mini-chat, visible in Fullscreen) */
         .chat-time-label {
             display: none;
             font-size: 10px;
@@ -173,7 +170,6 @@
             font-weight: 500;
         }
 
-        /* Reveal Date/Time in Fullscreen mode */
         #chat-widget.fullscreen .chat-time-label {
             display: inline-block;
         }
@@ -234,6 +230,71 @@
             padding: 10px 18px;
             font-size: 14px;
         }
+
+        /* Interactive Bot Dropdown & Dispatch Modal */
+        #bot-dispatch-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.78);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .bot-modal-box {
+            background: #1e293b;
+            border: 1px solid #f59e0b;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25);
+            width: 100%;
+            max-width: 520px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            color: #f8fafc;
+        }
+
+        .channel-pill-group {
+            display: flex;
+            gap: 12px;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            flex-wrap: wrap;
+        }
+
+        .channel-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .channel-pill input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #f59e0b;
+            cursor: pointer;
+        }
+
+        .bot-preview-area {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12.5px;
+            color: #e2e8f0;
+            width: 100%;
+            box-sizing: border-box;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
@@ -292,7 +353,10 @@
 
             <!-- STEP 5: Directory List -->
             <div id="directory-view" style="display: none; flex-direction: column; gap: 12px;">
-                <h3 style="margin: 0; font-size: 18px; text-align: center;">Directory List</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 18px;">Directory List</h3>
+                    <button id="direct-bot-modal-open-btn" class="sign-in-btn" style="padding: 7px 12px; font-size: 13px; background: linear-gradient(135deg, #f59e0b, #d97706);">🤖 Custom Bot Dispatch</button>
+                </div>
                 <input 
                     type="text" 
                     id="search-input" 
@@ -351,7 +415,7 @@
         </div>
     </div>
 
-    <!-- Real-Time Chat System Popup Box (With Persistent History & Bot Support) -->
+    <!-- Live Chat Widget -->
     <div id="chat-widget">
         <div class="chat-header">
             <span>💬 Community Live Chat</span>
@@ -367,6 +431,57 @@
             <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" required>
             <button type="submit" class="sign-in-btn">Send</button>
         </form>
+    </div>
+
+    <!-- Unified Bot Modal with Recipient Dropdown & Channel Selection -->
+    <div id="bot-dispatch-modal">
+        <div class="bot-modal-box">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 17px; color: #f59e0b;">🤖 CommunityBot Dispatch Center</h3>
+                <button id="close-bot-dispatch-btn" style="background: transparent; border: none; color: white; font-size: 22px; cursor: pointer;">&times;</button>
+            </div>
+
+            <!-- Recipient Dropdown Selection -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 13px; color: #94a3b8; font-weight: 600;">Target Recipient:</label>
+                <select id="bot-recipient-select" style="padding: 10px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 8px; font-size: 14px;">
+                    <option value="">-- Choose Member --</option>
+                </select>
+            </div>
+
+            <!-- Unified Multi-Channel Checkboxes -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 13px; color: #94a3b8; font-weight: 600;">Delivery Channels (Check all that apply):</label>
+                <div class="channel-pill-group">
+                    <label class="channel-pill">
+                        <input type="checkbox" id="chk-wa" checked>
+                        <span>💬 WhatsApp</span>
+                    </label>
+                    <label class="channel-pill">
+                        <input type="checkbox" id="chk-sms" checked>
+                        <span>📱 SMS</span>
+                    </label>
+                    <label class="channel-pill">
+                        <input type="checkbox" id="chk-email" checked>
+                        <span>✉️ Email</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Editable Message Content -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 13px; color: #94a3b8; font-weight: 600;">Message Content:</label>
+                <textarea id="bot-message-textarea" class="bot-preview-area" rows="6"></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px;">
+                <button id="cancel-bot-dispatch-btn" class="register-btn" style="width: auto; padding: 10px 18px; font-size: 14px;">Cancel</button>
+                <button id="send-bot-dispatch-btn" class="sign-in-btn" style="width: auto; padding: 10px 22px; font-size: 14px; background: linear-gradient(135deg, #f59e0b, #d97706);">🚀 Dispatch Now</button>
+            </div>
+            
+            <div id="bot-status-output" style="font-size: 12.5px; text-align: center; min-height: 18px; color: #38bdf8;"></div>
+        </div>
     </div>
 
     <script>
@@ -616,51 +731,161 @@
             }
         });
 
-        // ================= AUTOMATED SYSTEM BOT ENGINE =================
-        async function triggerBotProfileMessage(member, alertConfirmation = true) {
-            const botMessageText = `🤖 [SYSTEM BOT AUTOMATED DISPATCH]\n` +
-                `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `👋 Hello @${member.name}, here is your verified profile dossier registered on the Community Portal:\n\n` +
-                `👤 Name: ${member.name}\n` +
-                `📧 Email: ${member.email || 'N/A'}\n` +
-                `📞 Phone: ${member.phone || 'N/A'}\n` +
-                `🏠 Address: ${member.address || 'N/A'}\n` +
-                `🔖 Role / Status: ${member.status || 'N/A'}` +
-                (member.status === 'Work' && member.work_details ? `\n💼 Organization / Title: ${member.work_details}` : '') +
-                `\n\n🛡️ Sent automatically on your behalf by CommunityBot.`;
-
-            const timestamp = new Date().toISOString();
-
-            // 1. Broadcast real-time to active room
-            if (presenceChannel) {
-                await presenceChannel.send({
-                    type: 'broadcast',
-                    event: 'chat_message',
-                    payload: {
-                        sender: BOT_NAME,
-                        message: botMessageText,
-                        timestamp: timestamp
-                    }
-                });
-            }
-
-            // 2. Persist to Supabase Database
-            await supabaseClient.from('chat_messages').insert([
-                { sender: BOT_NAME, message: botMessageText, created_at: timestamp }
-            ]);
-
-            // 3. Save to local fallback cache
-            saveMessageLocally(BOT_NAME, botMessageText, timestamp);
-
-            // 4. Render directly in local chat view
-            appendChatMessage(BOT_NAME, botMessageText, timestamp, false);
-
-            if (alertConfirmation) {
-                alert(`🤖 CommunityBot has successfully sent the verified profile message to ${member.name}! Check the Live Chat to see it.`);
-            }
+        // ================= AUTOMATED MULTI-CHANNEL BOT ENGINE =================
+        function generateProfileText(member) {
+            return `🤖 [COMMUNITYBOT NOTIFICATION]\n` +
+                   `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                   `Hello @${member.name},\nHere is your official community dossier record:\n\n` +
+                   `👤 Name: ${member.name}\n` +
+                   `📧 Email: ${member.email || 'N/A'}\n` +
+                   `📞 Phone: ${member.phone || 'N/A'}\n` +
+                   `🏠 Address: ${member.address || 'N/A'}\n` +
+                   `🔖 Status: ${member.status || 'N/A'}` +
+                   (member.status === 'Work' && member.work_details ? `\n💼 Work: ${member.work_details}` : '') +
+                   `\n━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                   `Sent automatically on your behalf by CommunityBot.`;
         }
 
-        // Save / Update Profile Form
+        function populateRecipientDropdown(selectedId = null) {
+            const selectEl = document.getElementById('bot-recipient-select');
+            selectEl.innerHTML = '<option value="">-- Choose Member --</option>';
+
+            cachedMembers.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = `${m.name} (${m.phone || 'No phone'} | ${m.email || 'No email'})`;
+                if (selectedId && String(m.id) === String(selectedId)) {
+                    opt.selected = true;
+                }
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function openUnifiedBotModal(member = null) {
+            populateRecipientDropdown(member ? member.id : null);
+
+            const modal = document.getElementById('bot-dispatch-modal');
+            const textarea = document.getElementById('bot-message-textarea');
+            const statusLabel = document.getElementById('bot-status-output');
+
+            statusLabel.innerText = '';
+            document.getElementById('chk-wa').checked = true;
+            document.getElementById('chk-sms').checked = true;
+            document.getElementById('chk-email').checked = true;
+
+            if (member) {
+                textarea.value = generateProfileText(member);
+            } else if (cachedMembers.length > 0) {
+                textarea.value = generateProfileText(cachedMembers[0]);
+                document.getElementById('bot-recipient-select').value = cachedMembers[0].id;
+            } else {
+                textarea.value = "Hello, here is your verified community record.";
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        document.getElementById('direct-bot-modal-open-btn').addEventListener('click', () => {
+            openUnifiedBotModal(null);
+        });
+
+        document.getElementById('bot-recipient-select').addEventListener('change', (e) => {
+            const chosenId = e.target.value;
+            const found = cachedMembers.find(m => String(m.id) === String(chosenId));
+            if (found) {
+                document.getElementById('bot-message-textarea').value = generateProfileText(found);
+            }
+        });
+
+        document.getElementById('close-bot-dispatch-btn').addEventListener('click', () => {
+            document.getElementById('bot-dispatch-modal').style.display = 'none';
+        });
+
+        document.getElementById('cancel-bot-dispatch-btn').addEventListener('click', () => {
+            document.getElementById('bot-dispatch-modal').style.display = 'none';
+        });
+
+        // Unified 1-click Dispatch Trigger
+        document.getElementById('send-bot-dispatch-btn').addEventListener('click', async () => {
+            const recipientId = document.getElementById('bot-recipient-select').value;
+            const targetMember = cachedMembers.find(m => String(m.id) === String(recipientId));
+
+            if (!targetMember) {
+                alert('Please select a recipient from the dropdown!');
+                return;
+            }
+
+            const sendWhatsApp = document.getElementById('chk-wa').checked;
+            const sendSMS = document.getElementById('chk-sms').checked;
+            const sendEmail = document.getElementById('chk-email').checked;
+            const message = document.getElementById('bot-message-textarea').value.trim();
+            const statusLabel = document.getElementById('bot-status-output');
+
+            if (!sendWhatsApp && !sendSMS && !sendEmail) {
+                statusLabel.style.color = '#ef4444';
+                statusLabel.innerText = 'Please check at least one channel (WhatsApp, SMS, or Email).';
+                return;
+            }
+
+            statusLabel.style.color = '#38bdf8';
+            statusLabel.innerText = '🤖 Bot delivering to selected channels...';
+
+            const sendBtn = document.getElementById('send-bot-dispatch-btn');
+            sendBtn.disabled = true;
+
+            try {
+                // 1. Post to In-App Real-Time Live Chat
+                const timestamp = new Date().toISOString();
+                if (presenceChannel) {
+                    await presenceChannel.send({
+                        type: 'broadcast',
+                        event: 'chat_message',
+                        payload: { sender: BOT_NAME, message, timestamp }
+                    });
+                }
+                await supabaseClient.from('chat_messages').insert([
+                    { sender: BOT_NAME, message, created_at: timestamp }
+                ]);
+                saveMessageLocally(BOT_NAME, message, timestamp);
+                appendChatMessage(BOT_NAME, message, timestamp, false);
+
+                // 2. Call the Supabase Edge Function to deliver real SMS, Email, and WhatsApp in background
+                const { data, error } = await supabaseClient.functions.invoke('send-profile-bot', {
+                    body: {
+                        recipient: {
+                            name: targetMember.name,
+                            email: targetMember.email,
+                            phone: targetMember.phone
+                        },
+                        channels: {
+                            whatsapp: sendWhatsApp,
+                            sms: sendSMS,
+                            email: sendEmail
+                        },
+                        message: message
+                    }
+                });
+
+                if (error) {
+                    console.warn("Backend Edge Function dispatch:", error.message);
+                }
+
+                statusLabel.style.color = '#4ade80';
+                statusLabel.innerText = `✅ Dispatched to ${targetMember.name} via selected channels!`;
+
+                setTimeout(() => {
+                    document.getElementById('bot-dispatch-modal').style.display = 'none';
+                    sendBtn.disabled = false;
+                }, 1400);
+
+            } catch (err) {
+                statusLabel.style.color = '#ef4444';
+                statusLabel.innerText = `Error: ${err.message || 'Dispatch failed'}`;
+                sendBtn.disabled = false;
+            }
+        });
+
+        // Save Profile Form
         document.getElementById('save-info-btn').addEventListener('click', async () => {
             const name = document.getElementById('info-name').value.trim();
             const email = document.getElementById('info-email').value.trim();
@@ -680,11 +905,11 @@
             }
 
             const recordData = { 
-                name: name, 
-                email: email,
-                phone: phone,
-                address: address, 
-                status: status, 
+                name, 
+                email,
+                phone,
+                address, 
+                status, 
                 work_details: status === 'Work' ? workDetails : null 
             };
 
@@ -713,10 +938,12 @@
                     alert('Error saving record: ' + error.message);
                 } else {
                     alert('Profile data saved successfully for ' + name + '!');
-                    
-                    // Trigger automated bot message dispatch
                     const savedRecord = (data && data[0]) ? data[0] : recordData;
-                    await triggerBotProfileMessage(savedRecord, false);
+                    
+                    const runBotNow = confirm(`🤖 Would you like CommunityBot to automatically dispatch this profile to ${name}'s WhatsApp, SMS, and Gmail now?`);
+                    if (runBotNow) {
+                        openUnifiedBotModal(savedRecord);
+                    }
 
                     addInfoView.style.display = 'none';
                     peopleMenuView.style.display = 'flex';
@@ -784,10 +1011,10 @@
                 actionsDiv.style.gap = '6px';
                 actionsDiv.style.alignItems = 'center';
 
-                // Automated Bot Direct Message Trigger Button
+                // Automated Bot Send Button (Opens the Unified Dropdown Dispatcher)
                 const botBtn = document.createElement('button');
                 botBtn.innerText = '🤖 Bot Send';
-                botBtn.title = 'Have CommunityBot automatically compile and post this member\'s verified profile';
+                botBtn.title = 'Open unified dropdown to send WhatsApp, SMS, and Email together';
                 botBtn.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.4))';
                 botBtn.style.color = '#fde68a';
                 botBtn.style.border = '1px solid rgba(245, 158, 11, 0.6)';
@@ -796,91 +1023,8 @@
                 botBtn.style.fontSize = '12px';
                 botBtn.style.fontWeight = 'bold';
                 botBtn.style.cursor = 'pointer';
-                botBtn.addEventListener('mouseenter', () => {
-                    botBtn.style.transform = 'scale(1.08)';
-                    botBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.8)';
-                });
-                botBtn.addEventListener('mouseleave', () => {
-                    botBtn.style.transform = 'scale(1)';
-                    botBtn.style.boxShadow = 'none';
-                });
-                botBtn.addEventListener('click', async () => {
-                    await triggerBotProfileMessage(item, true);
-                });
-
-                // WhatsApp Button
-                const waBtn = document.createElement('button');
-                waBtn.innerText = '💬 WhatsApp';
-                waBtn.style.background = 'rgba(37, 211, 102, 0.2)';
-                waBtn.style.color = '#25d366';
-                waBtn.style.border = '1px solid rgba(37, 211, 102, 0.4)';
-                waBtn.style.borderRadius = '6px';
-                waBtn.style.padding = '5px 9px';
-                waBtn.style.fontSize = '12px';
-                waBtn.style.fontWeight = 'bold';
-                waBtn.style.cursor = 'pointer';
-                waBtn.addEventListener('mouseenter', () => {
-                    waBtn.style.transform = 'scale(1.08)';
-                    waBtn.style.boxShadow = '0 0 12px rgba(37, 211, 102, 0.8)';
-                });
-                waBtn.addEventListener('mouseleave', () => {
-                    waBtn.style.transform = 'scale(1)';
-                    waBtn.style.boxShadow = 'none';
-                });
-                waBtn.addEventListener('click', () => {
-                    const cleanPhone = (item.phone || '').replace(/[^0-9]/g, '');
-                    const text = encodeURIComponent(`Hello ${item.name}, this is a message from the Community Dashboard.`);
-                    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
-                });
-
-                // SMS Button
-                const smsBtn = document.createElement('button');
-                smsBtn.innerText = '📱 SMS';
-                smsBtn.style.background = 'rgba(0, 198, 255, 0.2)';
-                smsBtn.style.color = '#00c6ff';
-                smsBtn.style.border = '1px solid rgba(0, 198, 255, 0.4)';
-                smsBtn.style.borderRadius = '6px';
-                smsBtn.style.padding = '5px 9px';
-                smsBtn.style.fontSize = '12px';
-                smsBtn.style.fontWeight = 'bold';
-                smsBtn.style.cursor = 'pointer';
-                smsBtn.addEventListener('mouseenter', () => {
-                    smsBtn.style.transform = 'scale(1.08)';
-                    smsBtn.style.boxShadow = '0 0 12px rgba(0, 198, 255, 0.8)';
-                });
-                smsBtn.addEventListener('mouseleave', () => {
-                    smsBtn.style.transform = 'scale(1)';
-                    smsBtn.style.boxShadow = 'none';
-                });
-                smsBtn.addEventListener('click', () => {
-                    const cleanPhone = (item.phone || '').replace(/[^0-9]/g, '');
-                    const text = encodeURIComponent(`Hello ${item.name}, from Community Dashboard: `);
-                    window.location.href = `sms:${cleanPhone}?body=${text}`;
-                });
-
-                // Gmail Button
-                const gmailBtn = document.createElement('button');
-                gmailBtn.innerText = '✉ Gmail';
-                gmailBtn.style.background = 'rgba(234, 67, 53, 0.2)';
-                gmailBtn.style.color = '#ea4335';
-                gmailBtn.style.border = '1px solid rgba(234, 67, 53, 0.4)';
-                gmailBtn.style.borderRadius = '6px';
-                gmailBtn.style.padding = '5px 9px';
-                gmailBtn.style.fontSize = '12px';
-                gmailBtn.style.fontWeight = 'bold';
-                gmailBtn.style.cursor = 'pointer';
-                gmailBtn.addEventListener('mouseenter', () => {
-                    gmailBtn.style.transform = 'scale(1.08)';
-                    gmailBtn.style.boxShadow = '0 0 12px rgba(234, 67, 53, 0.8)';
-                });
-                gmailBtn.addEventListener('mouseleave', () => {
-                    gmailBtn.style.transform = 'scale(1)';
-                    gmailBtn.style.boxShadow = 'none';
-                });
-                gmailBtn.addEventListener('click', () => {
-                    const subject = encodeURIComponent('Community Dashboard Notification');
-                    const body = encodeURIComponent(`Hello ${item.name},\n\n`);
-                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(item.email)}&su=${subject}&body=${body}`, '_blank');
+                botBtn.addEventListener('click', () => {
+                    openUnifiedBotModal(item);
                 });
 
                 // Edit Button
@@ -894,14 +1038,6 @@
                 editBtn.style.fontSize = '12px';
                 editBtn.style.fontWeight = 'bold';
                 editBtn.style.cursor = 'pointer';
-                editBtn.addEventListener('mouseenter', () => {
-                    editBtn.style.transform = 'scale(1.08)';
-                    editBtn.style.boxShadow = '0 0 12px rgba(255, 255, 255, 0.6)';
-                });
-                editBtn.addEventListener('mouseleave', () => {
-                    editBtn.style.transform = 'scale(1)';
-                    editBtn.style.boxShadow = 'none';
-                });
                 editBtn.addEventListener('click', () => {
                     editingMemberId = item.id;
                     document.getElementById('info-form-title').innerText = 'Edit Profile Data';
@@ -937,14 +1073,6 @@
                 deleteBtn.style.fontSize = '12px';
                 deleteBtn.style.fontWeight = 'bold';
                 deleteBtn.style.cursor = 'pointer';
-                deleteBtn.addEventListener('mouseenter', () => {
-                    deleteBtn.style.transform = 'scale(1.08)';
-                    deleteBtn.style.boxShadow = '0 0 12px rgba(255, 75, 75, 0.8)';
-                });
-                deleteBtn.addEventListener('mouseleave', () => {
-                    deleteBtn.style.transform = 'scale(1)';
-                    deleteBtn.style.boxShadow = 'none';
-                });
                 deleteBtn.addEventListener('click', () => {
                     const confirmed = confirm(`Are you sure you want to delete ${item.name}?`);
                     if (!confirmed) return;
@@ -966,9 +1094,6 @@
                 });
 
                 actionsDiv.appendChild(botBtn);
-                actionsDiv.appendChild(waBtn);
-                actionsDiv.appendChild(smsBtn);
-                actionsDiv.appendChild(gmailBtn);
                 actionsDiv.appendChild(editBtn);
                 actionsDiv.appendChild(deleteBtn);
 
@@ -1022,12 +1147,12 @@
             addBtn.innerText = 'Creating account...';
 
             const { data, error } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password,
+                email,
+                password,
                 options: {
                     data: { 
                         display_name: name,
-                        role: role 
+                        role 
                     }
                 }
             });
@@ -1096,7 +1221,7 @@
                 const isHeadAdmin = member.role === 'head_admin';
                 const roleBadge = isHeadAdmin 
                     ? `<span style="font-size: 11px; color: #ffd700; margin-left: 5px;">👑 Head Admin</span>` 
-                    : `<span style="font-size: 11px; color: #70d6ff; margin-left: 5px;">🛡 Admin</span>`;
+                    : `<span style="font-size: 11px; color: #70d6ff; margin-left: 5px;">🛡️ Admin</span>`;
 
                 const row = document.createElement('div');
                 row.style.background = 'rgba(255, 255, 255, 0.08)';
@@ -1138,14 +1263,6 @@
                     rankBtn.style.fontSize = '12px';
                     rankBtn.style.fontWeight = 'bold';
                     rankBtn.style.cursor = 'pointer';
-                    rankBtn.addEventListener('mouseenter', () => {
-                        rankBtn.style.transform = 'scale(1.08)';
-                        rankBtn.style.boxShadow = '0 0 12px rgba(255, 193, 7, 0.8)';
-                    });
-                    rankBtn.addEventListener('mouseleave', () => {
-                        rankBtn.style.transform = 'scale(1)';
-                        rankBtn.style.boxShadow = 'none';
-                    });
 
                     rankBtn.addEventListener('click', async () => {
                         const newRole = isHeadAdmin ? 'admin' : 'head_admin';
@@ -1181,14 +1298,6 @@
                     removeBtn.style.fontSize = '12px';
                     removeBtn.style.fontWeight = 'bold';
                     removeBtn.style.cursor = 'pointer';
-                    removeBtn.addEventListener('mouseenter', () => {
-                        removeBtn.style.transform = 'scale(1.08)';
-                        removeBtn.style.boxShadow = '0 0 12px rgba(255, 75, 75, 0.8)';
-                    });
-                    removeBtn.addEventListener('mouseleave', () => {
-                        removeBtn.style.transform = 'scale(1)';
-                        removeBtn.style.boxShadow = 'none';
-                    });
 
                     removeBtn.addEventListener('click', async () => {
                         const confirmed = confirm(`Head Admin Action: Are you sure you want to PERMANENTLY delete the account for "${member.name}" and kick them out?`);
