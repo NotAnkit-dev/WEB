@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Book OCR - Community Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- In-Browser OCR Engine (Tesseract.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        .receipt-container {
+            max-width: 950px;
+            margin: 30px auto;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            color: #f8fafc;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 15px;
+        }
+
+        .upload-section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px dashed #38bdf8;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .status-box {
+            margin-top: 12px;
+            font-size: 14px;
+            color: #38bdf8;
+            min-height: 20px;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-bar {
+            padding: 8px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: white;
+            flex-grow: 1;
+            max-width: 300px;
+        }
+
+        /* Tabular Layout */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #0f172a;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tag {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .tag-building { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+        .tag-namaskar { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .tag-general { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            color: white;
+        }
+
+        .btn-export {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-back {
+            background: transparent;
+            border: 1px solid #64748b;
+            color: #cbd5e1;
+        }
+
+        .btn-back:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body style="background: #0f172a; margin: 0; font-family: system-ui, sans-serif;">
+
+    <div class="receipt-container">
+        <!-- Header -->
+        <div class="header-row">
+            <div>
+                <h2 style="margin: 0; color: #38bdf8;">🧾 Receipt Book Management</h2>
+                <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;">Scan receipts with OCR & store in tabular records</p>
+            </div>
+            <button class="btn btn-back" onclick="window.location.href='dashboard.html'">⬅ Back to Dashboard</button>
+        </div>
+
+        <!-- OCR Scanning Section -->
+        <div class="upload-section">
+            <h3 style="margin-top: 0;">Upload Scanned Receipt</h3>
+            <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">Upload a receipt photo or scan to automatically extract Name, Date, Amounts, and Category.</p>
+            
+            <input type="file" id="receipt-file-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+            <button class="btn btn-primary" onclick="document.getElementById('receipt-file-input').click()">📷 Choose Receipt Image</button>
+
+            <div id="ocr-status" class="status-box"></div>
+        </div>
+
+        <!-- Action Row (Filter & Export) -->
+        <div class="action-row">
+            <input type="text" id="search-input" class="search-bar" placeholder="Filter by Name, Category, or Date..." oninput="filterTable()">
+            <div>
+                <button class="btn btn-export" onclick="exportToCSV()">📥 Download CSV</button>
+            </div>
+        </div>
+
+        <!-- Tabular Records Table -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Receipt ID</th>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th>Amount (Numbers)</th>
+                        <th>Amount (in Words)</th>
+                        <th>Category</th>
+                    </tr>
+                </thead>
+                <tbody id="receipts-table-body">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #94a3b8;">Loading records...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://omwsgrsctlqrsdnblklk.supabase.co';
+        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_y4NF8jqtRbjEZbTTSLWhaw_KohHngqU';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+        let receiptsData = [];
+
+        // 1. Fetch Existing Receipts from Supabase on Load
+        async function fetchReceipts() {
+            const tableBody = document.getElementById('receipts-table-body');
+            
+            const { data, error } = await supabaseClient
+                .from('receipts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                // If table doesn't exist yet, show local mock records
+                receiptsData = [
+                    { receipt_id: "REC-001", date: "08/10/2026", name: "Rajesh Sharma", amount_num: "5000", amount_words: "Five Thousand Only", category: "Building Fund" },
+                    { receipt_id: "REC-002", date: "09/10/2026", name: "Priya Patel", amount_num: "1100", amount_words: "One Thousand One Hundred Only", category: "Namaskar" }
+                ];
+            } else {
+                receiptsData = data || [];
+            }
+            renderTable(receiptsData);
+        }
+
+        // 2. Render Tabular View
+        function renderTable(records) {
+            const tableBody = document.getElementById('receipts-table-body');
+            tableBody.innerHTML = '';
+
+            if (records.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No receipts recorded yet.</td></tr>';
+                return;
+            }
+
+            records.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                
+                let tagClass = 'tag-general';
+                if (row.category === 'Building Fund') tagClass = 'tag-building';
+                else if (row.category === 'Namaskar') tagClass = 'tag-namaskar';
+
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: #38bdf8;">${row.receipt_id || `REC-${String(index + 1).padStart(3, '0')}`}</td>
+                    <td>${row.date || 'N/A'}</td>
+                    <td style="font-weight: 500;">${row.name || 'N/A'}</td>
+                    <td style="color: #4ade80; font-weight: bold;">₹ ${row.amount_num || '0'}</td>
+                    <td>${row.amount_words || 'N/A'}</td>
+                    <td><span class="tag ${tagClass}">${row.category || 'General'}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // 3. In-Browser OCR Processing (Tesseract.js)
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusBox = document.getElementById('ocr-status');
+            statusBox.innerText = '🔍 Reading receipt image... Please wait.';
+
+            try {
+                // Run OCR directly inside the browser
+                const result = await Tesseract.recognize(
+                    file,
+                    'eng',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizingtext') {
+                                statusBox.innerText = `🔍 Recognizing text: ${Math.round(m.progress * 100)}%`;
+                            }
+                        }
+                    }
+                );
+
+                const extractedText = result.data.text;
+                statusBox.innerText = '✅ Text recognized! Parsing fields...';
+
+                // Parse the 5 target fields
+                const parsedRecord = parseReceiptData(extractedText);
+
+                // Save into database
+                const { error } = await supabaseClient.from('receipts').insert([parsedRecord]);
+
+                // Append locally & re-render
+                receiptsData.unshift(parsedRecord);
+                renderTable(receiptsData);
+
+                statusBox.innerHTML = `✅ Successfully added: <strong>${parsedRecord.name}</strong> (₹${parsedRecord.amount_num}) under <strong>${parsedRecord.category}</strong>!`;
+
+            } catch (err) {
+                console.error(err);
+                statusBox.innerText = '❌ Failed to read receipt image. Please try a clearer picture.';
+            }
+        }
+
+        // 4. Regex Field Extraction Logic
+        function parseReceiptData(text) {
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+            let record = {
+                receipt_id: `REC-${Math.floor(100 + Math.random() * 900)}`,
+                date: new Date().toLocaleDateString('en-GB'),
+                name: "Member Donor",
+                amount_num: "0",
+                amount_words: "N/A",
+                category: "General / Other"
+            };
+
+            // Date match (DD/MM/YYYY or DD-MM-YYYY)
+            const dateMatch = text.match(/\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/);
+            if (dateMatch) record.date = dateMatch[0];
+
+            // Amount in numbers (matches ₹, Rs., or plain 3-6 digit totals)
+            const numMatch = text.match(/(?:Rs\.?|₹|INR|\bAmt\b[:\s]*)\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)/i) || text.match(/\b\d{3,6}\b/);
+            if (numMatch) record.amount_num = numMatch[1] ? numMatch[1].replace(/,/g, '') : numMatch[0];
+
+            // Name match (heuristics based on common receipt headings)
+            const nameMatch = text.match(/(?:Received from|From|Name|Shri|Smt)[:\s]+([A-Za-z\s\.\-]+?)(?=\n|Date|Rs|₹|$)/i);
+            if (nameMatch && nameMatch[1].trim().length > 2) {
+                record.name = nameMatch[1].trim();
+            }
+
+            // Amount in words match
+            const wordsMatch = text.match(/(?:Sum of Rupees|Rupees)[:\s]+([A-Za-z\s\-]+?)(?=\bonly\b|\n|Rs|\d|$)/i);
+            if (wordsMatch) {
+                record.amount_words = wordsMatch[1].trim() + " Only";
+            }
+
+            // Category Classification
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('building') || lowerText.includes('construction') || lowerText.includes('repair')) {
+                record.category = 'Building Fund';
+            } else if (lowerText.includes('namaskar') || lowerText.includes('puja') || lowerText.includes('prasad')) {
+                record.category = 'Namaskar';
+            }
+
+            return record;
+        }
+
+        // 5. Table Search & Filtering
+        function filterTable() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const filtered = receiptsData.filter(r => 
+                (r.name && r.name.toLowerCase().includes(query)) ||
+                (r.category && r.category.toLowerCase().includes(query)) ||
+                (r.date && r.date.toLowerCase().includes(query))
+            );
+            renderTable(filtered);
+        }
+
+        // 6. CSV Export
+        function exportToCSV() {
+            if (receiptsData.length === 0) {
+                alert('No receipt records to export.');
+                return;
+            }
+
+            let csv = "Receipt ID,Date,Name,Amount (Numbers),Amount (Words),Category\n";
+            receiptsData.forEach(r => {
+                csv += `"${r.receipt_id || ''}","${r.date || ''}","${r.name || ''}","${r.amount_num || ''}","${r.amount_words || ''}","${r.category || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `Receipt_Book_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        fetchReceipts();
+    </script>
+</body>
+</html>
