@@ -805,8 +805,9 @@
             document.getElementById('bot-dispatch-modal').style.display = 'none';
         });
 
-        // Unified 1-click Dispatch Trigger
+        // Unified 1-click Dispatch Trigger (With Full Error & Debug Handling)
         document.getElementById('send-bot-dispatch-btn').addEventListener('click', async () => {
+            console.log(">>> [Bot] 'Dispatch Now' button clicked!");
             const recipientId = document.getElementById('bot-recipient-select').value;
             const targetMember = cachedMembers.find(m => String(m.id) === String(recipientId));
 
@@ -824,6 +825,11 @@
             if (!sendWhatsApp && !sendSMS && !sendEmail) {
                 statusLabel.style.color = '#ef4444';
                 statusLabel.innerText = 'Please check at least one channel (WhatsApp, SMS, or Email).';
+                return;
+            }
+
+            if ((sendSMS || sendWhatsApp) && !targetMember.phone) {
+                alert('The selected member does not have a phone number on file.');
                 return;
             }
 
@@ -849,38 +855,67 @@
                 saveMessageLocally(BOT_NAME, message, timestamp);
                 appendChatMessage(BOT_NAME, message, timestamp, false);
 
-                // 2. Call the Supabase Edge Function to deliver real SMS, Email, and WhatsApp in background
+                // 2. Call the Supabase Edge Function
+                const outgoingPayload = {
+                    recipient: {
+                        name: targetMember.name,
+                        email: targetMember.email,
+                        phone: targetMember.phone
+                    },
+                    channels: {
+                        whatsapp: sendWhatsApp,
+                        sms: sendSMS,
+                        email: sendEmail
+                    },
+                    message: message
+                };
+
+                console.log(">>> [Bot] Invoking 'send-profile-bot' with payload:", outgoingPayload);
+
                 const { data, error } = await supabaseClient.functions.invoke('send-profile-bot', {
-                    body: {
-                        recipient: {
-                            name: targetMember.name,
-                            email: targetMember.email,
-                            phone: targetMember.phone
-                        },
-                        channels: {
-                            whatsapp: sendWhatsApp,
-                            sms: sendSMS,
-                            email: sendEmail
-                        },
-                        message: message
-                    }
+                    body: outgoingPayload
                 });
 
+                console.log(">>> [Bot] Backend response received:", { data, error });
+
                 if (error) {
-                    console.warn("Backend Edge Function dispatch:", error.message);
+                    throw error;
                 }
 
-                statusLabel.style.color = '#4ade80';
-                statusLabel.innerText = `✅ Dispatched to ${targetMember.name} via selected channels!`;
+                // Check backend channel statuses
+                if (data && data.results) {
+                    const res = data.results;
+                    const report = [];
+
+                    if (sendSMS) {
+                        report.push(`SMS: ${res.sms ? 'Sent ✅' : 'Failed ❌ (' + (res.errors?.sms || 'Carrier/Trial block') + ')'}`);
+                    }
+                    if (sendWhatsApp) {
+                        report.push(`WhatsApp: ${res.whatsapp ? 'Sent ✅' : 'Failed ❌ (' + (res.errors?.whatsapp || 'Sandbox opt-in needed') + ')'}`);
+                    }
+                    if (sendEmail) {
+                        report.push(`Email: ${res.email ? 'Sent ✅' : 'Failed ❌'}`);
+                    }
+
+                    statusLabel.style.color = '#4ade80';
+                    statusLabel.innerText = report.join(" | ");
+                    alert(`Dispatch results for ${targetMember.name}:\n\n` + report.join("\n"));
+                } else {
+                    statusLabel.style.color = '#4ade80';
+                    statusLabel.innerText = `✅ Dispatched to ${targetMember.name}!`;
+                    alert(`✅ Dispatched to ${targetMember.name}!`);
+                }
 
                 setTimeout(() => {
                     document.getElementById('bot-dispatch-modal').style.display = 'none';
                     sendBtn.disabled = false;
-                }, 1400);
+                }, 2000);
 
             } catch (err) {
+                console.error(">>> [Bot] Dispatch failure:", err);
                 statusLabel.style.color = '#ef4444';
                 statusLabel.innerText = `Error: ${err.message || 'Dispatch failed'}`;
+                alert(`Dispatch failed:\n${err.message || JSON.stringify(err)}`);
                 sendBtn.disabled = false;
             }
         });
@@ -906,8 +941,8 @@
 
             const recordData = { 
                 name, 
-                email,
-                phone,
+                email, 
+                phone, 
                 address, 
                 status, 
                 work_details: status === 'Work' ? workDetails : null 
@@ -1151,7 +1186,7 @@
                 password,
                 options: {
                     data: { 
-                        display_name: name,
+                        display_name: name, 
                         role 
                     }
                 }
