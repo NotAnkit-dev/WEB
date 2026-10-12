@@ -8,7 +8,7 @@
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Tesseract.js -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     .dashboard-row {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -23,11 +23,11 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
   <div class="max-w-6xl mx-auto space-y-6">
 
-    <!-- Top Navigation -->
+    <!-- Navigation Header -->
     <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
       <div>
         <h1 class="text-xl font-bold text-white tracking-wide">Receipt Book OCR & Dispatcher</h1>
-        <p class="text-xs text-slate-400">Scan physical receipts, auto-fill ledger fields, and notify donors</p>
+        <p class="text-xs text-slate-400">Scan receipts, verify ledger entries, and dispatch alerts</p>
       </div>
       <a href="dashboard.html" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-all duration-150 border border-slate-600 hover:shadow-lg">
         <span>←</span>
@@ -35,21 +35,21 @@
       </a>
     </div>
 
-    <!-- Main Scanner & Form Grid -->
+    <!-- Scanner & Entry Form Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-      <!-- OCR Image Uploader & Preview -->
+      <!-- OCR Image Uploader -->
       <div class="lg:col-span-5 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col justify-between">
         <div>
-          <h2 class="text-base font-semibold text-white mb-2">1. Scan Receipt Image</h2>
-          <p class="text-xs text-slate-400 mb-4">Upload physical receipt photo to auto-detect handwritten & printed values.</p>
+          <h2 class="text-base font-semibold text-white mb-2">1. Upload Receipt Image</h2>
+          <p class="text-xs text-slate-400 mb-4">Upload or photograph receipt to extract details.</p>
 
           <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-6 cursor-pointer bg-slate-900/50 hover:bg-slate-900 transition-colors">
             <svg class="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="text-xs font-medium text-slate-300">Click to upload receipt photo</span>
+            <span class="text-xs font-medium text-slate-300">Click to upload photo</span>
             <span class="text-[10px] text-slate-500 mt-1">PNG, JPG, or JPEG</span>
             <input type="file" id="receiptFileInput" accept="image/*" class="hidden" onchange="handleImageSelection(event)">
           </label>
@@ -61,7 +61,7 @@
           <!-- OCR Progress Bar -->
           <div id="ocrProgressWrapper" class="mt-4 hidden space-y-1">
             <div class="flex justify-between text-xs text-slate-400">
-              <span id="ocrStatusText">Enhancing image contrast...</span>
+              <span id="ocrStatusText">Processing receipt...</span>
               <span id="ocrPercentage">0%</span>
             </div>
             <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
@@ -73,44 +73,48 @@
         <div class="mt-4 p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-[11px] text-slate-400">
           <p class="font-medium text-slate-300 mb-1">OCR Tips:</p>
           <ul class="list-disc list-inside space-y-0.5">
-            <li>Auto-detects Building Fund, Namaskar, Sadharan, amounts, and handwritten names.</li>
-            <li>You can review and edit any detected field before saving.</li>
+            <li>Ensure the receipt is well-lit and in focus.</li>
+            <li>All fields can be manually corrected before saving.</li>
           </ul>
         </div>
       </div>
 
       <!-- Verified Data Form -->
       <div class="lg:col-span-7 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
-        <h2 class="text-base font-semibold text-white mb-2">2. Verify & Dispatch Data</h2>
-        <p class="text-xs text-slate-400 mb-4">Values are automatically extracted below. Edit if needed.</p>
+        <h2 class="text-base font-semibold text-white mb-2">2. Verify & Save Ledger</h2>
+        <p class="text-xs text-slate-400 mb-4">Review the populated fields below.</p>
 
         <div class="space-y-3">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Recipient Name</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Recipient Name *</label>
               <input type="text" id="recipientName" placeholder="e.g. Ramesh Kumar" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Date</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Date *</label>
               <input type="date" id="receiptDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Amount (in Numbers)</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Amount (in Numbers) *</label>
               <input type="number" id="amountNum" placeholder="e.g. 1500" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" oninput="autoPopulateWords(this.value)">
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Category</label>
-              <select id="receiptCategory" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
-                <option value="Building Fund">Building Fund</option>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Category *</label>
+              <select id="receiptCategory" onchange="toggleOtherCategoryInput()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <option value="Building fund">Building fund</option>
                 <option value="Namaskar">Namaskar</option>
-                <option value="Sadharan">Sadharan</option>
-                <option value="Jivdaya">Jivdaya</option>
-                <option value="General Donation">General Donation</option>
+                <option value="Other">Other</option>
               </select>
             </div>
+          </div>
+
+          <!-- Dynamic Other Category Input Box -->
+          <div id="otherCategoryWrapper" class="hidden">
+            <label class="block text-xs font-medium text-amber-300 mb-1">Specify Other Category *</label>
+            <input type="text" id="customCategoryInput" placeholder="Enter custom category name" class="w-full bg-slate-900 border border-amber-600/70 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
           </div>
 
           <div>
@@ -120,11 +124,11 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Phone Number (E.164 with Country Code)</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Phone Number (Optional for Save Entry)</label>
               <input type="text" id="phoneNumber" placeholder="+919876543210" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Delivery Channel</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Notification Channel</label>
               <div class="grid grid-cols-2 gap-2">
                 <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-500">
                   <input type="radio" name="channel" value="whatsapp" checked class="text-indigo-600">
@@ -139,10 +143,10 @@
           </div>
 
           <div class="flex gap-3 pt-2">
-            <button id="saveOnlyBtn" onclick="saveReceiptEntry(false)" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+            <button type="button" id="saveOnlyBtn" onclick="saveReceiptEntry(false)" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
               Save Entry Only
             </button>
-            <button id="dispatchBtn" onclick="saveReceiptEntry(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+            <button type="button" id="dispatchBtn" onclick="saveReceiptEntry(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
               Save & Dispatch Bot
             </button>
           </div>
@@ -153,12 +157,12 @@
 
     </div>
 
-    <!-- Tabular Records Section -->
+    <!-- Ledger Table with Hover Elevation -->
     <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-base font-semibold text-white">Receipt Book Ledger</h2>
-          <p class="text-xs text-slate-400">Captured records with date, breakdown, and dispatch status</p>
+          <p class="text-xs text-slate-400">Stored receipt records</p>
         </div>
         <div class="flex items-center gap-3">
           <button onclick="exportTableToCSV()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-md border border-slate-600 transition-colors">
@@ -204,36 +208,23 @@
       fetchStoredReceipts();
     });
 
-    async function preprocessImage(file) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imgData.data;
-
-          for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            const threshold = gray < 140 ? 0 : 255;
-            data[i] = threshold;
-            data[i + 1] = threshold;
-            data[i + 2] = threshold;
-          }
-
-          ctx.putImageData(imgData, 0, 0);
-          resolve(canvas.toDataURL("image/png"));
-        };
-      });
+    // Toggle Other Category Input
+    function toggleOtherCategoryInput() {
+      const select = document.getElementById("receiptCategory");
+      const otherWrapper = document.getElementById("otherCategoryWrapper");
+      const otherInput = document.getElementById("customCategoryInput");
+      if (select.value === "Other") {
+        otherWrapper.classList.remove("hidden");
+        otherInput.focus();
+      } else {
+        otherWrapper.classList.add("hidden");
+        otherInput.value = "";
+      }
     }
 
+    // Direct Image Handling for OCR
     async function handleImageSelection(event) {
-      const file = event.target.files[0];
+      const file = event.target.files && event.target.files[0];
       if (!file) return;
 
       const previewContainer = document.getElementById("previewContainer");
@@ -246,13 +237,13 @@
       previewImg.src = URL.createObjectURL(file);
       previewContainer.classList.remove("hidden");
       progressWrapper.classList.remove("hidden");
-      statusText.innerText = "Enhancing receipt ink contrast...";
+      statusText.innerText = "Initializing OCR reader...";
+      progressBar.style.width = "10%";
+      percentageText.innerText = "10%";
 
       try {
-        const processedImageData = await preprocessImage(file);
-
-        const result = await Tesseract.recognize(
-          processedImageData,
+        const { data: { text } } = await Tesseract.recognize(
+          file,
           'eng',
           {
             logger: m => {
@@ -260,76 +251,69 @@
                 const progress = Math.round(m.progress * 100);
                 progressBar.style.width = `${progress}%`;
                 percentageText.innerText = `${progress}%`;
-                statusText.innerText = 'Extracting handwritten & printed text...';
+                statusText.innerText = `Recognizing text... (${progress}%)`;
               }
             }
           }
         );
 
-        statusText.innerText = 'Scan Complete!';
-        parseExtractedOCRText(result.data.text);
+        statusText.innerText = "Scan complete!";
+        progressBar.style.width = "100%";
+        percentageText.innerText = "100%";
+        parseExtractedOCRText(text);
       } catch (err) {
-        console.error("OCR Failure:", err);
-        statusText.innerText = 'Failed to extract text. You can enter values manually.';
+        console.error("Tesseract Error:", err);
+        statusText.innerText = "OCR could not read the image. Please fill fields manually.";
+        showStatus("Could not auto-read the image. You can type in the details directly.", "error");
       }
     }
 
+    // Parse Extracted Text
     function parseExtractedOCRText(rawText) {
+      if (!rawText) return;
       const text = rawText.replace(/\r/g, '');
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // (a) Find Amount in Numbers
+      // (a) Extract Numbers (handles formats like 150=00, 150/-, ₹150)
       const amountMatch = text.match(/(?:₹|rs|inr)?\s*(\d{2,7})(?:\s*[\=\:\-]\s*00|\s*[\/\-]\s*)?/i);
       if (amountMatch && amountMatch[1]) {
-        const numericVal = amountMatch[1];
-        document.getElementById("amountNum").value = numericVal;
-        autoPopulateWords(numericVal);
+        const val = amountMatch[1];
+        document.getElementById("amountNum").value = val;
+        autoPopulateWords(val);
       }
 
-      // (b) Find Date
+      // (b) Extract Date
       const dateMatch = text.match(/\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b/);
       if (dateMatch) {
         const parsed = parseDateString(dateMatch[1]);
         if (parsed) document.getElementById("receiptDate").value = parsed;
       }
 
-      // (c) Find Category (Excluding Bheta)
+      // (c) Category Matching: Building fund vs Namaskar vs Other
       const catLower = text.toLowerCase();
-      const catSelect = document.getElementById("receiptCategory");
-      if (catLower.includes("building")) {
-        catSelect.value = "Building Fund";
+      const select = document.getElementById("receiptCategory");
+      if (catLower.includes("building") || catLower.includes("fund")) {
+        select.value = "Building fund";
       } else if (catLower.includes("namaskar")) {
-        catSelect.value = "Namaskar";
-      } else if (catLower.includes("sadharan")) {
-        catSelect.value = "Sadharan";
-      } else if (catLower.includes("jivdaya")) {
-        catSelect.value = "Jivdaya";
+        select.value = "Namaskar";
       } else {
-        catSelect.value = "General Donation";
+        select.value = "Other";
       }
+      toggleOtherCategoryInput();
 
       // (d) Amount in Words
-      const wordsMatch = text.match(/(?:rupees|rs\.?|words)?[\s\:\.\-]*([a-z\s]+(?:hundred|thousand|lakh|crore|fifty|twenty|ten|only)[a-z\s]*)/i);
+      const wordsMatch = text.match(/(?:rupees|words|amount in words)[\s\:\.\-]*([a-z\s]+(?:hundred|thousand|lakh|crore|fifty|twenty|ten|only)[a-z\s]*)/i);
       if (wordsMatch && wordsMatch[1].trim().length > 4) {
-        let cleanWords = wordsMatch[1].replace(/cash|cheque|bank|date/gi, '').trim();
-        if (cleanWords) {
-          document.getElementById("amountWords").value = cleanWords;
-        }
+        document.getElementById("amountWords").value = wordsMatch[1].trim();
       }
 
-      // (e) Name detection
-      const namePattern = /(?:sh[\/\.]?smt[\/\.]?|received from|name)[\s\:\.\-]+([A-Za-z\s]{3,35})/i;
-      const nameMatch = text.match(namePattern);
+      // (e) Name Matching
+      const nameMatch = text.match(/(?:sh[\/\.]?smt[\/\.]?|received from|name)[\s\:\.\-]+([A-Za-z\s]{3,35})/i);
       if (nameMatch && nameMatch[1]) {
         document.getElementById("recipientName").value = cleanName(nameMatch[1]);
       } else {
-        const candidateLine = lines.find(l => 
-          /(?:shri|kumar|singh|sharma|patel)/i.test(l) &&
-          !/mandal|colony|branch|sant/i.test(l)
-        );
-        if (candidateLine) {
-          document.getElementById("recipientName").value = cleanName(candidateLine);
-        }
+        const candidate = lines.find(l => /^[A-Za-z\s]{3,28}$/.test(l) && !/mandal|colony|branch|sant|date/i.test(l));
+        if (candidate) document.getElementById("recipientName").value = cleanName(candidate);
       }
     }
 
@@ -350,9 +334,9 @@
     function autoPopulateWords(numStr) {
       const num = parseInt(numStr, 10);
       if (isNaN(num) || num <= 0) return;
-      const currentWordsField = document.getElementById("amountWords");
-      if (!currentWordsField.value) {
-        currentWordsField.value = convertNumberToWords(num) + " Rupees Only";
+      const field = document.getElementById("amountWords");
+      if (!field.value) {
+        field.value = convertNumberToWords(num) + " Rupees Only";
       }
     }
 
@@ -380,31 +364,45 @@
         }
         if (val > 0) {
           if (val < 20) str += units[val] + " ";
-          else {
-            str += tens[Math.floor(val / 10)] + " " + units[val % 10] + " ";
-          }
+          else str += tens[Math.floor(val / 10)] + " " + units[val % 10] + " ";
         }
         return str.trim();
       }
       return numToWordsHelper(n);
     }
 
+    // Save Entry Handler
     async function saveReceiptEntry(triggerDispatch) {
       const name = document.getElementById("recipientName").value.trim();
       const date = document.getElementById("receiptDate").value;
       const amountNum = document.getElementById("amountNum").value.trim();
       const amountWords = document.getElementById("amountWords").value.trim();
-      const category = document.getElementById("receiptCategory").value;
+      const categorySelect = document.getElementById("receiptCategory").value;
+      const customCategory = document.getElementById("customCategoryInput").value.trim();
       const phone = document.getElementById("phoneNumber").value.trim();
       const channel = document.querySelector('input[name="channel"]:checked').value;
 
-      if (!name || !amountNum) {
-        showStatus("Name and Amount are required.", "error");
+      if (!name) {
+        showStatus("Please enter recipient name.", "error");
+        return;
+      }
+      if (!amountNum) {
+        showStatus("Please enter amount in numbers.", "error");
         return;
       }
 
+      let finalCategory = categorySelect;
+      if (categorySelect === "Other") {
+        if (!customCategory) {
+          showStatus("Please specify the custom category name.", "error");
+          document.getElementById("customCategoryInput").focus();
+          return;
+        }
+        finalCategory = customCategory;
+      }
+
       if (triggerDispatch && !phone) {
-        showStatus("A valid phone number is required to dispatch notification.", "error");
+        showStatus("A valid phone number is required to dispatch the bot.", "error");
         return;
       }
 
@@ -413,7 +411,7 @@
 
       if (triggerDispatch) {
         try {
-          const messageBody = `Hello ${name},\n\nWe have received your payment of ₹${amountNum} (${amountWords}) towards ${category}.\nDate: ${date}\n\nThank you!`;
+          const messageBody = `Hello ${name},\n\nWe have received your payment of ₹${amountNum} (${amountWords || ''}) towards ${finalCategory}.\nDate: ${date}\n\nThank you!`;
           const { data: botRes, error: botErr } = await supabase.functions.invoke("send-profile-bot", {
             body: { channel, to: phone, message: messageBody }
           });
@@ -421,7 +419,7 @@
           sid = botRes?.sid || null;
           status = "Dispatched";
         } catch (err) {
-          console.warn("Twilio Bot Dispatch warning:", err.message);
+          console.warn("Twilio Bot Dispatch warning:", err);
           status = "Failed Dispatch";
         }
       }
@@ -431,7 +429,7 @@
         receipt_date: date,
         amount: parseFloat(amountNum),
         amount_words: amountWords,
-        category: category,
+        category: finalCategory,
         phone: phone || "N/A",
         channel: channel,
         sid: sid,
@@ -439,12 +437,16 @@
         created_at: new Date().toISOString()
       };
 
-      const { error: dbError } = await supabase.from("receipts").insert([receiptRecord]);
-      if (dbError) {
-        console.warn("Database insert failed, caching locally:", dbError.message);
-        const stored = JSON.parse(localStorage.getItem("receipt_ledger") || "[]");
-        stored.push(receiptRecord);
-        localStorage.setItem("receipt_ledger", JSON.stringify(stored));
+      // Always save to LocalStorage immediately so it never gets lost
+      const stored = JSON.parse(localStorage.getItem("receipt_ledger") || "[]");
+      stored.push(receiptRecord);
+      localStorage.setItem("receipt_ledger", JSON.stringify(stored));
+
+      // Attempt Supabase insert in background
+      try {
+        await supabase.from("receipts").insert([receiptRecord]);
+      } catch (err) {
+        console.warn("Supabase insert note:", err.message);
       }
 
       showStatus(`Receipt saved successfully! (${status})`, "success");
@@ -452,16 +454,24 @@
       resetFormFields();
     }
 
+    // Fetch and Render Ledger Table
     async function fetchStoredReceipts() {
       const tbody = document.getElementById("ledgerTableBody");
+      let records = [];
 
-      const { data, error } = await supabase
-        .from("receipts")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("receipts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!error && data && data.length > 0) {
+          records = data;
+        }
+      } catch (e) {
+        console.warn("Fetching from local cache instead");
+      }
 
-      let records = data || [];
-      if (error || records.length === 0) {
+      if (records.length === 0) {
         records = JSON.parse(localStorage.getItem("receipt_ledger") || "[]").reverse();
       }
 
@@ -492,13 +502,9 @@
     }
 
     function getCategoryBadge(cat) {
-      switch (cat) {
-        case "Building Fund": return "bg-amber-950/70 text-amber-300 border border-amber-800";
-        case "Namaskar": return "bg-purple-950/70 text-purple-300 border border-purple-800";
-        case "Sadharan": return "bg-blue-950/70 text-blue-300 border border-blue-800";
-        case "Jivdaya": return "bg-emerald-950/70 text-emerald-300 border border-emerald-800";
-        default: return "bg-slate-700 text-slate-300";
-      }
+      if (cat === "Building fund") return "bg-amber-950/70 text-amber-300 border border-amber-800";
+      if (cat === "Namaskar") return "bg-purple-950/70 text-purple-300 border border-purple-800";
+      return "bg-slate-700 text-slate-300 border border-slate-600";
     }
 
     function resetFormFields() {
@@ -506,6 +512,9 @@
       document.getElementById("amountNum").value = "";
       document.getElementById("amountWords").value = "";
       document.getElementById("phoneNumber").value = "";
+      document.getElementById("customCategoryInput").value = "";
+      document.getElementById("receiptCategory").value = "Building fund";
+      toggleOtherCategoryInput();
       document.getElementById("receiptFileInput").value = "";
       document.getElementById("previewContainer").classList.add("hidden");
       document.getElementById("ocrProgressWrapper").classList.add("hidden");
