@@ -5,10 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Receipt Book - OCR & Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Global Error Logger -->
+  <script>
+    window.addEventListener("error", function (e) {
+      showLiveError("Runtime Error: " + (e.message || "Unknown error") + " at " + (e.filename || "") + ":" + (e.lineno || ""));
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      showLiveError("Promise/Async Error: " + (e.reason?.message || JSON.stringify(e.reason)));
+    });
+
+    function showLiveError(msg) {
+      const banner = document.getElementById("liveErrorConsole");
+      const list = document.getElementById("liveErrorList");
+      if (banner && list) {
+        banner.style.display = "block";
+        const li = document.createElement("li");
+        li.innerText = "[" + new Date().toLocaleTimeString() + "] " + msg;
+        list.appendChild(li);
+      } else {
+        console.error("Critical Early Error:", msg);
+      }
+    }
+  </script>
+
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Tesseract.js -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Stable Tesseract.js -->
+  <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+
   <style>
     .dashboard-row {
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -23,11 +48,20 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
   <div class="max-w-6xl mx-auto space-y-6">
 
+    <!-- Live Error Console -->
+    <div id="liveErrorConsole" style="display: none;" class="bg-rose-950 border-2 border-rose-500 rounded-xl p-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-rose-800 pb-2 mb-2">
+        <span class="text-rose-400 font-bold text-sm">⚠ Diagnostics & Error Feed</span>
+        <button onclick="document.getElementById('liveErrorConsole').style.display='none'" class="text-rose-300 hover:text-white text-xs underline">Dismiss</button>
+      </div>
+      <ul id="liveErrorList" class="text-xs text-rose-200 font-mono space-y-1 list-disc list-inside max-h-40 overflow-y-auto"></ul>
+    </div>
+
     <!-- Navigation Header -->
     <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
       <div>
         <h1 class="text-xl font-bold text-white tracking-wide">Receipt Book OCR & Dispatcher</h1>
-        <p class="text-xs text-slate-400">Scan receipts, verify ledger entries, and dispatch alerts</p>
+        <p class="text-xs text-slate-400">Scan physical receipts, auto-fill ledger fields, and notify donors</p>
       </div>
       <a href="dashboard.html" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-all duration-150 border border-slate-600 hover:shadow-lg">
         <span>←</span>
@@ -35,33 +69,33 @@
       </a>
     </div>
 
-    <!-- Scanner & Entry Form Grid -->
+    <!-- Main Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-      <!-- OCR Image Uploader -->
+      <!-- Upload Section -->
       <div class="lg:col-span-5 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col justify-between">
         <div>
           <h2 class="text-base font-semibold text-white mb-2">1. Upload Receipt Image</h2>
-          <p class="text-xs text-slate-400 mb-4">Upload or photograph receipt to extract details.</p>
+          <p class="text-xs text-slate-400 mb-4">Choose a receipt photo to automatically extract fields in real time.</p>
 
           <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-6 cursor-pointer bg-slate-900/50 hover:bg-slate-900 transition-colors">
             <svg class="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="text-xs font-medium text-slate-300">Click to upload photo</span>
+            <span class="text-xs font-medium text-slate-300">Click here to upload receipt photo</span>
             <span class="text-[10px] text-slate-500 mt-1">PNG, JPG, or JPEG</span>
-            <input type="file" id="receiptFileInput" accept="image/*" class="hidden" onchange="handleImageSelection(event)">
+            <input type="file" id="receiptFileInput" accept="image/*" class="hidden">
           </label>
 
-          <div id="previewContainer" class="mt-4 hidden">
+          <div id="previewContainer" class="mt-4" style="display: none;">
             <img id="imagePreview" class="max-h-48 w-full object-contain rounded-lg border border-slate-700 bg-slate-950" alt="Receipt preview">
           </div>
 
-          <!-- OCR Progress Bar -->
-          <div id="ocrProgressWrapper" class="mt-4 hidden space-y-1">
+          <!-- Progress Bar -->
+          <div id="ocrProgressWrapper" class="mt-4 space-y-1" style="display: none;">
             <div class="flex justify-between text-xs text-slate-400">
-              <span id="ocrStatusText">Processing receipt...</span>
+              <span id="ocrStatusText">Preparing scan...</span>
               <span id="ocrPercentage">0%</span>
             </div>
             <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
@@ -73,18 +107,18 @@
         <div class="mt-4 p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-[11px] text-slate-400">
           <p class="font-medium text-slate-300 mb-1">OCR Tips:</p>
           <ul class="list-disc list-inside space-y-0.5">
-            <li>Ensure the receipt is well-lit and in focus.</li>
-            <li>All fields can be manually corrected before saving.</li>
+            <li>Ensure text is sharp and well-lit.</li>
+            <li>All fields remain fully editable before saving.</li>
           </ul>
         </div>
       </div>
 
-      <!-- Verified Data Form -->
+      <!-- Form Section -->
       <div class="lg:col-span-7 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
         <h2 class="text-base font-semibold text-white mb-2">2. Verify & Save Ledger</h2>
-        <p class="text-xs text-slate-400 mb-4">Review the populated fields below.</p>
+        <p class="text-xs text-slate-400 mb-4">Values will populate below automatically.</p>
 
-        <div class="space-y-3">
+        <form id="receiptForm" onsubmit="event.preventDefault();" class="space-y-3">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-medium text-slate-300 mb-1">Recipient Name *</label>
@@ -103,7 +137,7 @@
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-300 mb-1">Category *</label>
-              <select id="receiptCategory" onchange="toggleOtherCategoryInput()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <select id="receiptCategory" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
                 <option value="Building fund">Building fund</option>
                 <option value="Namaskar">Namaskar</option>
                 <option value="Other">Other</option>
@@ -112,9 +146,9 @@
           </div>
 
           <!-- Dynamic Other Category Input Box -->
-          <div id="otherCategoryWrapper" class="hidden">
-            <label class="block text-xs font-medium text-amber-300 mb-1">Specify Other Category *</label>
-            <input type="text" id="customCategoryInput" placeholder="Enter custom category name" class="w-full bg-slate-900 border border-amber-600/70 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+          <div id="otherCategoryWrapper" style="display: none;" class="p-3 bg-slate-900/80 rounded-lg border border-amber-500/50">
+            <label class="block text-xs font-medium text-amber-300 mb-1">Specify Category Name *</label>
+            <input type="text" id="customCategoryInput" placeholder="e.g. Bhandara, Sadharan, General" class="w-full bg-slate-950 border border-amber-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
           </div>
 
           <div>
@@ -124,7 +158,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Phone Number (Optional for Save Entry)</label>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Phone Number (Optional for Save)</label>
               <input type="text" id="phoneNumber" placeholder="+919876543210" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             </div>
             <div>
@@ -143,21 +177,21 @@
           </div>
 
           <div class="flex gap-3 pt-2">
-            <button type="button" id="saveOnlyBtn" onclick="saveReceiptEntry(false)" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+            <button type="button" id="saveOnlyBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors border border-slate-600 shadow">
               Save Entry Only
             </button>
-            <button type="button" id="dispatchBtn" onclick="saveReceiptEntry(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+            <button type="button" id="dispatchBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-lg transition-colors shadow">
               Save & Dispatch Bot
             </button>
           </div>
 
-          <div id="statusNotification" class="hidden text-xs p-3 rounded-lg mt-3"></div>
-        </div>
+          <div id="statusNotification" style="display: none;" class="text-xs p-3 rounded-lg mt-3"></div>
+        </form>
       </div>
 
     </div>
 
-    <!-- Ledger Table with Hover Elevation -->
+    <!-- Ledger Table -->
     <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -201,30 +235,55 @@
   <script>
     const SUPABASE_URL = "https://omwsgrsctlqrsdnblklk.supabase.co";
     const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabase = null;
+
+    try {
+      if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (err) {
+      showLiveError("Supabase init error: " + err.message);
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("receiptDate").valueAsDate = new Date();
-      fetchStoredReceipts();
+      try {
+        document.getElementById("receiptDate").valueAsDate = new Date();
+
+        if (typeof Tesseract === "undefined") {
+          showLiveError("Tesseract.js failed to load from CDN. Check your internet connection.");
+        }
+
+        document.getElementById("receiptCategory").addEventListener("change", handleCategoryChange);
+        document.getElementById("receiptFileInput").addEventListener("change", handleImageUpload);
+        document.getElementById("saveOnlyBtn").addEventListener("click", () => saveReceipt(false));
+        document.getElementById("dispatchBtn").addEventListener("click", () => saveReceipt(true));
+
+        fetchStoredReceipts();
+      } catch (err) {
+        showLiveError("Init error: " + err.message);
+      }
     });
 
-    // Toggle Other Category Input
-    function toggleOtherCategoryInput() {
-      const select = document.getElementById("receiptCategory");
-      const otherWrapper = document.getElementById("otherCategoryWrapper");
-      const otherInput = document.getElementById("customCategoryInput");
-      if (select.value === "Other") {
-        otherWrapper.classList.remove("hidden");
-        otherInput.focus();
-      } else {
-        otherWrapper.classList.add("hidden");
-        otherInput.value = "";
+    function handleCategoryChange() {
+      try {
+        const select = document.getElementById("receiptCategory");
+        const wrapper = document.getElementById("otherCategoryWrapper");
+        const input = document.getElementById("customCategoryInput");
+        
+        if (select.value === "Other") {
+          wrapper.style.display = "block";
+          input.focus();
+        } else {
+          wrapper.style.display = "none";
+          input.value = "";
+        }
+      } catch (err) {
+        showLiveError("Category change error: " + err.message);
       }
     }
 
-    // Direct Image Handling for OCR
-    async function handleImageSelection(event) {
-      const file = event.target.files && event.target.files[0];
+    async function handleImageUpload(e) {
+      const file = e.target.files && e.target.files[0];
       if (!file) return;
 
       const previewContainer = document.getElementById("previewContainer");
@@ -234,80 +293,78 @@
       const percentageText = document.getElementById("ocrPercentage");
       const statusText = document.getElementById("ocrStatusText");
 
-      previewImg.src = URL.createObjectURL(file);
-      previewContainer.classList.remove("hidden");
-      progressWrapper.classList.remove("hidden");
-      statusText.innerText = "Initializing OCR reader...";
-      progressBar.style.width = "10%";
-      percentageText.innerText = "10%";
-
       try {
+        previewImg.src = URL.createObjectURL(file);
+        previewContainer.style.display = "block";
+        progressWrapper.style.display = "block";
+        statusText.innerText = "Initializing OCR Engine...";
+        progressBar.style.width = "10%";
+        percentageText.innerText = "10%";
+
+        if (typeof Tesseract === "undefined") {
+          throw new Error("Tesseract library is unavailable. Please check your network or refresh the page.");
+        }
+
         const { data: { text } } = await Tesseract.recognize(
           file,
           'eng',
           {
             logger: m => {
               if (m.status === 'recognizing text') {
-                const progress = Math.round(m.progress * 100);
-                progressBar.style.width = `${progress}%`;
-                percentageText.innerText = `${progress}%`;
-                statusText.innerText = `Recognizing text... (${progress}%)`;
+                const p = Math.round(m.progress * 100);
+                progressBar.style.width = `${p}%`;
+                percentageText.innerText = `${p}%`;
+                statusText.innerText = `Recognizing text in real time... (${p}%)`;
               }
             }
           }
         );
 
-        statusText.innerText = "Scan complete!";
+        statusText.innerText = "OCR Completed!";
         progressBar.style.width = "100%";
         percentageText.innerText = "100%";
-        parseExtractedOCRText(text);
+        showStatus("Image parsed! Values filled below.", "success");
+        parseOCRResult(text);
       } catch (err) {
-        console.error("Tesseract Error:", err);
-        statusText.innerText = "OCR could not read the image. Please fill fields manually.";
-        showStatus("Could not auto-read the image. You can type in the details directly.", "error");
+        showLiveError("OCR Error: " + err.message);
+        statusText.innerText = "Error during scanning. Please enter details manually.";
+        showStatus("Could not extract image data. Please complete fields manually.", "error");
       }
     }
 
-    // Parse Extracted Text
-    function parseExtractedOCRText(rawText) {
+    function parseOCRResult(rawText) {
       if (!rawText) return;
       const text = rawText.replace(/\r/g, '');
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // (a) Extract Numbers (handles formats like 150=00, 150/-, ₹150)
       const amountMatch = text.match(/(?:₹|rs|inr)?\s*(\d{2,7})(?:\s*[\=\:\-]\s*00|\s*[\/\-]\s*)?/i);
       if (amountMatch && amountMatch[1]) {
-        const val = amountMatch[1];
-        document.getElementById("amountNum").value = val;
-        autoPopulateWords(val);
+        document.getElementById("amountNum").value = amountMatch[1];
+        autoPopulateWords(amountMatch[1]);
       }
 
-      // (b) Extract Date
       const dateMatch = text.match(/\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b/);
       if (dateMatch) {
         const parsed = parseDateString(dateMatch[1]);
         if (parsed) document.getElementById("receiptDate").value = parsed;
       }
 
-      // (c) Category Matching: Building fund vs Namaskar vs Other
-      const catLower = text.toLowerCase();
+      const lower = text.toLowerCase();
       const select = document.getElementById("receiptCategory");
-      if (catLower.includes("building") || catLower.includes("fund")) {
+      if (lower.includes("building") || lower.includes("fund")) {
         select.value = "Building fund";
-      } else if (catLower.includes("namaskar")) {
+      } else if (lower.includes("namaskar")) {
         select.value = "Namaskar";
       } else {
         select.value = "Other";
       }
-      toggleOtherCategoryInput();
+      handleCategoryChange();
 
-      // (d) Amount in Words
       const wordsMatch = text.match(/(?:rupees|words|amount in words)[\s\:\.\-]*([a-z\s]+(?:hundred|thousand|lakh|crore|fifty|twenty|ten|only)[a-z\s]*)/i);
       if (wordsMatch && wordsMatch[1].trim().length > 4) {
         document.getElementById("amountWords").value = wordsMatch[1].trim();
       }
 
-      // (e) Name Matching
       const nameMatch = text.match(/(?:sh[\/\.]?smt[\/\.]?|received from|name)[\s\:\.\-]+([A-Za-z\s]{3,35})/i);
       if (nameMatch && nameMatch[1]) {
         document.getElementById("recipientName").value = cleanName(nameMatch[1]);
@@ -344,87 +401,77 @@
       const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
       const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
       if (n === 0) return "Zero";
-      function numToWordsHelper(val) {
+      function helper(val) {
         let str = "";
-        if (val >= 10000000) {
-          str += numToWordsHelper(Math.floor(val / 10000000)) + " Crore ";
-          val %= 10000000;
-        }
-        if (val >= 100000) {
-          str += numToWordsHelper(Math.floor(val / 100000)) + " Lakh ";
-          val %= 100000;
-        }
-        if (val >= 1000) {
-          str += numToWordsHelper(Math.floor(val / 1000)) + " Thousand ";
-          val %= 1000;
-        }
-        if (val >= 100) {
-          str += numToWordsHelper(Math.floor(val / 100)) + " Hundred ";
-          val %= 100;
-        }
+        if (val >= 10000000) { str += helper(Math.floor(val / 10000000)) + " Crore "; val %= 10000000; }
+        if (val >= 100000) { str += helper(Math.floor(val / 100000)) + " Lakh "; val %= 100000; }
+        if (val >= 1000) { str += helper(Math.floor(val / 1000)) + " Thousand "; val %= 1000; }
+        if (val >= 100) { str += helper(Math.floor(val / 100)) + " Hundred "; val %= 100; }
         if (val > 0) {
           if (val < 20) str += units[val] + " ";
           else str += tens[Math.floor(val / 10)] + " " + units[val % 10] + " ";
         }
         return str.trim();
       }
-      return numToWordsHelper(n);
+      return helper(n);
     }
 
-    // Save Entry Handler
-    async function saveReceiptEntry(triggerDispatch) {
+    async function saveReceipt(triggerDispatch) {
       const name = document.getElementById("recipientName").value.trim();
       const date = document.getElementById("receiptDate").value;
       const amountNum = document.getElementById("amountNum").value.trim();
       const amountWords = document.getElementById("amountWords").value.trim();
-      const categorySelect = document.getElementById("receiptCategory").value;
-      const customCategory = document.getElementById("customCategoryInput").value.trim();
+      const catSelect = document.getElementById("receiptCategory").value;
+      const customCat = document.getElementById("customCategoryInput").value.trim();
       const phone = document.getElementById("phoneNumber").value.trim();
       const channel = document.querySelector('input[name="channel"]:checked').value;
 
       if (!name) {
         showStatus("Please enter recipient name.", "error");
+        document.getElementById("recipientName").focus();
         return;
       }
       if (!amountNum) {
         showStatus("Please enter amount in numbers.", "error");
+        document.getElementById("amountNum").focus();
         return;
       }
 
-      let finalCategory = categorySelect;
-      if (categorySelect === "Other") {
-        if (!customCategory) {
+      let finalCategory = catSelect;
+      if (catSelect === "Other") {
+        if (!customCat) {
           showStatus("Please specify the custom category name.", "error");
           document.getElementById("customCategoryInput").focus();
           return;
         }
-        finalCategory = customCategory;
+        finalCategory = customCat;
       }
 
       if (triggerDispatch && !phone) {
-        showStatus("A valid phone number is required to dispatch the bot.", "error");
+        showStatus("A phone number is required to dispatch the notification.", "error");
+        document.getElementById("phoneNumber").focus();
         return;
       }
 
       let sid = null;
       let status = triggerDispatch ? "Dispatching..." : "Saved";
 
-      if (triggerDispatch) {
+      if (triggerDispatch && supabase) {
         try {
-          const messageBody = `Hello ${name},\n\nWe have received your payment of ₹${amountNum} (${amountWords || ''}) towards ${finalCategory}.\nDate: ${date}\n\nThank you!`;
+          const msg = `Hello ${name},\n\nWe have received your payment of ₹${amountNum} (${amountWords || ''}) towards ${finalCategory}.\nDate: ${date}\n\nThank you!`;
           const { data: botRes, error: botErr } = await supabase.functions.invoke("send-profile-bot", {
-            body: { channel, to: phone, message: messageBody }
+            body: { channel, to: phone, message: msg }
           });
           if (botErr) throw botErr;
           sid = botRes?.sid || null;
           status = "Dispatched";
         } catch (err) {
-          console.warn("Twilio Bot Dispatch warning:", err);
-          status = "Failed Dispatch";
+          showLiveError("Bot Dispatch error: " + err.message);
+          status = "Saved (Dispatch Failed)";
         }
       }
 
-      const receiptRecord = {
+      const record = {
         recipient_name: name,
         receipt_date: date,
         amount: parseFloat(amountNum),
@@ -437,38 +484,37 @@
         created_at: new Date().toISOString()
       };
 
-      // Always save to LocalStorage immediately so it never gets lost
       const stored = JSON.parse(localStorage.getItem("receipt_ledger") || "[]");
-      stored.push(receiptRecord);
+      stored.push(record);
       localStorage.setItem("receipt_ledger", JSON.stringify(stored));
 
-      // Attempt Supabase insert in background
-      try {
-        await supabase.from("receipts").insert([receiptRecord]);
-      } catch (err) {
-        console.warn("Supabase insert note:", err.message);
+      if (supabase) {
+        try {
+          await supabase.from("receipts").insert([record]);
+        } catch (err) {
+          showLiveError("Supabase DB save error: " + err.message);
+        }
       }
 
       showStatus(`Receipt saved successfully! (${status})`, "success");
       fetchStoredReceipts();
-      resetFormFields();
+      resetForm();
     }
 
-    // Fetch and Render Ledger Table
     async function fetchStoredReceipts() {
       const tbody = document.getElementById("ledgerTableBody");
       let records = [];
 
-      try {
-        const { data, error } = await supabase
-          .from("receipts")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (!error && data && data.length > 0) {
-          records = data;
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("receipts")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (!error && data && data.length > 0) records = data;
+        } catch (e) {
+          showLiveError("Supabase fetch notice: Local cache will be used.");
         }
-      } catch (e) {
-        console.warn("Fetching from local cache instead");
       }
 
       if (records.length === 0) {
@@ -494,7 +540,7 @@
           <td class="px-4 py-3 text-slate-400 font-mono text-[11px]">${item.phone || 'N/A'}</td>
           <td class="px-4 py-3 text-center">
             <span class="text-[10px] uppercase font-bold tracking-wider ${item.status === 'Dispatched' ? 'text-indigo-400' : 'text-slate-400'}">
-              ${item.status || item.channel || 'Saved'}
+              ${item.status || 'Saved'}
             </span>
           </td>
         </tr>
@@ -507,17 +553,17 @@
       return "bg-slate-700 text-slate-300 border border-slate-600";
     }
 
-    function resetFormFields() {
+    function resetForm() {
       document.getElementById("recipientName").value = "";
       document.getElementById("amountNum").value = "";
       document.getElementById("amountWords").value = "";
       document.getElementById("phoneNumber").value = "";
       document.getElementById("customCategoryInput").value = "";
       document.getElementById("receiptCategory").value = "Building fund";
-      toggleOtherCategoryInput();
+      handleCategoryChange();
       document.getElementById("receiptFileInput").value = "";
-      document.getElementById("previewContainer").classList.add("hidden");
-      document.getElementById("ocrProgressWrapper").classList.add("hidden");
+      document.getElementById("previewContainer").style.display = "none";
+      document.getElementById("ocrProgressWrapper").style.display = "none";
     }
 
     function exportTableToCSV() {
@@ -548,12 +594,12 @@
 
     function showStatus(msg, type) {
       const box = document.getElementById("statusNotification");
-      box.classList.remove("hidden", "bg-emerald-950/60", "text-emerald-300", "border-emerald-700", "bg-rose-950/60", "text-rose-300", "border-rose-700");
-      if (type === "success") {
-        box.classList.add("bg-emerald-950/60", "text-emerald-300", "border", "border-emerald-700");
-      } else {
-        box.classList.add("bg-rose-950/60", "text-rose-300", "border", "border-rose-700");
-      }
+      box.style.display = "block";
+      box.className = `text-xs p-3 rounded-lg mt-3 ${
+        type === "success" 
+          ? "bg-emerald-950/80 text-emerald-300 border border-emerald-700" 
+          : "bg-rose-950/80 text-rose-300 border border-rose-700"
+      }`;
       box.innerText = msg;
     }
   </script>
