@@ -1,559 +1,552 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Book OCR - Community Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Tesseract.js for in-browser OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --border-color: #334155;
-            --accent-blue: #38bdf8;
-            --accent-amber: #f59e0b;
-            --accent-amber-dark: #d97706;
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* Header Navigation */
-        .top-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            padding: 14px 20px;
-            border-radius: 12px;
-        }
-
-        .top-nav h2 {
-            font-size: 20px;
-            color: var(--accent-amber);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .back-btn {
-            background: linear-gradient(135deg, #7dd3fc, #0284c7);
-            color: white;
-            text-decoration: none;
-            padding: 9px 18px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            transition: transform 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .back-btn:hover {
-            transform: scale(1.03);
-        }
-
-        /* Top Split: Manual Left, Image Right */
-        .split-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 850px) {
-            .split-section {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        }
-
-        .card h3 {
-            font-size: 16px;
-            color: var(--accent-blue);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            margin-bottom: 4px;
-        }
-
-        /* Form elements */
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .form-group label {
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input, .form-group select {
-            background: #0f172a;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 10px;
-            color: #ffffff;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            border-color: var(--accent-amber);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .primary-btn {
-            background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber-dark));
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            margin-top: 6px;
-        }
-
-        .primary-btn:hover {
-            opacity: 0.92;
-        }
-
-        /* Image & OCR Area */
-        .upload-box {
-            border: 2px dashed #475569;
-            border-radius: 8px;
-            padding: 16px;
-            text-align: center;
-            background: #0f172a;
-        }
-
-        .preview-img-container {
-            width: 100%;
-            height: 240px;
-            background: #0b1120;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .preview-img-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: none;
-        }
-
-        .ocr-status {
-            font-size: 13px;
-            color: var(--accent-blue);
-            min-height: 18px;
-            text-align: center;
-        }
-
-        /* Bottom Table Section */
-        .table-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13.5px;
-        }
-
-        th, td {
-            padding: 12px 14px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background: #0f172a;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .badge {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .action-del-btn {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            padding: 5px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .action-del-btn:hover {
-            background: rgba(239, 68, 68, 0.35);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt Book - OCR & Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Tesseract.js -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <style>
+    .dashboard-row {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dashboard-row:hover {
+      background-color: rgba(51, 65, 85, 0.6);
+      transform: translateY(-1.5px);
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+    }
+  </style>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
 
-    <div class="container">
-        <!-- Top Navbar -->
-        <div class="top-nav">
-            <h2>🧾 Receipt Book OCR System</h2>
-            <a href="dashboard.html" class="back-btn">⬅️ Back to Dashboard</a>
-        </div>
-
-        <!-- Upper Section: Form (Left) & Image / Scan (Right) -->
-        <div class="split-section">
-            
-            <!-- Manual / Captured Form -->
-            <div class="card">
-                <h3>📝 Receipt Information</h3>
-                <form id="receipt-form">
-                    <div class="form-group">
-                        <label>1. Recipient / Donor Name</label>
-                        <input type="text" id="rcpt-name" placeholder="Full Name" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>2. Date</label>
-                        <input type="date" id="rcpt-date" required>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>3. Amount (In Numbers)</label>
-                            <input type="number" step="any" id="rcpt-amount-num" placeholder="e.g. 5000" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>5. Category</label>
-                            <select id="rcpt-category" required>
-                                <option value="Building fund">Building fund</option>
-                                <option value="Namaskar">Namaskar</option>
-                                <option value="Sadharan">Sadharan</option>
-                                <option value="General Donation">General Donation</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>4. Amount Written in Words</label>
-                        <input type="text" id="rcpt-amount-words" placeholder="e.g. Five Thousand Only" required>
-                    </div>
-
-                    <button type="submit" class="primary-btn">💾 Save to Record Table</button>
-                </form>
-            </div>
-
-            <!-- OCR Scanner Side -->
-            <div class="card">
-                <h3>📷 Receipt Image & OCR Extraction</h3>
-                <div class="upload-box">
-                    <input type="file" id="image-upload" accept="image/*">
-                </div>
-
-                <div class="preview-img-container">
-                    <span id="preview-placeholder" style="color: var(--text-muted); font-size: 13px;">No receipt image chosen</span>
-                    <img id="receipt-img" alt="Receipt preview">
-                </div>
-
-                <button type="button" id="start-ocr-btn" class="primary-btn" style="background: linear-gradient(135deg, #0284c7, #0ea5e9);" disabled>
-                    🔍 Run OCR Extraction
-                </button>
-                <div id="ocr-progress" class="ocr-status"></div>
-            </div>
-
-        </div>
-
-        <!-- Bottom Section: Records Table -->
-        <div class="table-card">
-            <div class="table-header">
-                <h3 style="color: var(--accent-amber); border: none; margin: 0;">📊 Stored Receipt Records</h3>
-                <button type="button" id="export-csv-btn" class="primary-btn" style="padding: 7px 14px; font-size: 13px; margin: 0; background: linear-gradient(135deg, #10b981, #059669);">
-                    📥 Export CSV
-                </button>
-            </div>
-
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Date</th>
-                            <th>Amount (₹ / $)</th>
-                            <th>Amount (In Words)</th>
-                            <th>Category</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="records-tbody">
-                        <!-- Dynamic Records -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- Top Navigation -->
+    <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-wide">Receipt Book OCR & Dispatcher</h1>
+        <p class="text-xs text-slate-400">Scan physical receipts, auto-fill ledger fields, and notify donors</p>
+      </div>
+      <a href="dashboard.html" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-all duration-150 border border-slate-600 hover:shadow-lg">
+        <span>←</span>
+        <span>Back to Dashboard</span>
+      </a>
     </div>
 
-    <script>
-        const imageUpload = document.getElementById('image-upload');
-        const receiptImg = document.getElementById('receipt-img');
-        const previewPlaceholder = document.getElementById('preview-placeholder');
-        const startOcrBtn = document.getElementById('start-ocr-btn');
-        const ocrProgress = document.getElementById('ocr-progress');
-        const receiptForm = document.getElementById('receipt-form');
-        const recordsTbody = document.getElementById('records-tbody');
-        const exportCsvBtn = document.getElementById('export-csv-btn');
+    <!-- Main Scanner & Form Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        let selectedFile = null;
-        let storedReceipts = JSON.parse(localStorage.getItem('community_receipt_records')) || [];
+      <!-- OCR Image Uploader & Preview -->
+      <div class="lg:col-span-5 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <h2 class="text-base font-semibold text-white mb-2">1. Scan Receipt Image</h2>
+          <p class="text-xs text-slate-400 mb-4">Upload physical receipt photo to auto-detect handwritten & printed values.</p>
 
-        // Render saved entries on page load
-        renderTable();
+          <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-6 cursor-pointer bg-slate-900/50 hover:bg-slate-900 transition-colors">
+            <svg class="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-xs font-medium text-slate-300">Click to upload receipt photo</span>
+            <span class="text-[10px] text-slate-500 mt-1">PNG, JPG, or JPEG</span>
+            <input type="file" id="receiptFileInput" accept="image/*" class="hidden" onchange="handleImageSelection(event)">
+          </label>
 
-        // Handle Image Selection
-        imageUpload.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                selectedFile = file;
-                receiptImg.src = URL.createObjectURL(file);
-                receiptImg.style.display = 'block';
-                previewPlaceholder.style.display = 'none';
-                startOcrBtn.disabled = false;
-                ocrProgress.innerText = 'Ready to scan.';
-            }
-        });
+          <div id="previewContainer" class="mt-4 hidden">
+            <img id="imagePreview" class="max-h-48 w-full object-contain rounded-lg border border-slate-700 bg-slate-950" alt="Receipt preview">
+          </div>
 
-        // Run Tesseract OCR and extract 5 parameters
-        startOcrBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
+          <!-- OCR Progress Bar -->
+          <div id="ocrProgressWrapper" class="mt-4 hidden space-y-1">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span id="ocrStatusText">Enhancing image contrast...</span>
+              <span id="ocrPercentage">0%</span>
+            </div>
+            <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div id="ocrProgressBar" class="bg-indigo-500 h-full w-0 transition-all duration-150"></div>
+            </div>
+          </div>
+        </div>
 
-            startOcrBtn.disabled = true;
-            ocrProgress.innerText = 'Initializing OCR engine...';
+        <div class="mt-4 p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-[11px] text-slate-400">
+          <p class="font-medium text-slate-300 mb-1">OCR Tips:</p>
+          <ul class="list-disc list-inside space-y-0.5">
+            <li>Auto-detects Building Fund, Namaskar, Sadharan, amounts, and handwritten names.</li>
+            <li>You can review and edit any detected field before saving.</li>
+          </ul>
+        </div>
+      </div>
 
-            try {
-                const { data: { text } } = await Tesseract.recognize(
-                    selectedFile,
-                    'eng',
-                    {
-                        logger: (m) => {
-                            if (m.status === 'recognizing text') {
-                                ocrProgress.innerText = `Extracting: ${Math.round(m.progress * 100)}%`;
-                            }
-                        }
-                    }
-                );
+      <!-- Verified Data Form -->
+      <div class="lg:col-span-7 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
+        <h2 class="text-base font-semibold text-white mb-2">2. Verify & Dispatch Data</h2>
+        <p class="text-xs text-slate-400 mb-4">Values are automatically extracted below. Edit if needed.</p>
 
-                ocrProgress.innerText = 'Scan finished! Parsing fields...';
-                parseReceiptText(text);
-            } catch (err) {
-                console.error(err);
-                ocrProgress.innerText = 'Error reading the receipt image.';
-            } finally {
-                startOcrBtn.disabled = false;
-            }
-        });
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Recipient Name</label>
+              <input type="text" id="recipientName" placeholder="e.g. Ramesh Kumar" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Date</label>
+              <input type="date" id="receiptDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
 
-        // Parse OCR text using regex patterns
-        function parseReceiptText(rawText) {
-            const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Amount (in Numbers)</label>
+              <input type="number" id="amountNum" placeholder="e.g. 1500" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" oninput="autoPopulateWords(this.value)">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Category</label>
+              <select id="receiptCategory" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <option value="Building Fund">Building Fund</option>
+                <option value="Namaskar">Namaskar</option>
+                <option value="Sadharan">Sadharan</option>
+                <option value="Jivdaya">Jivdaya</option>
+                <option value="General Donation">General Donation</option>
+              </select>
+            </div>
+          </div>
 
-            // 1. Detect Category keywords
-            const lower = rawText.toLowerCase();
-            if (lower.includes('building') || lower.includes('fund')) {
-                document.getElementById('rcpt-category').value = 'Building fund';
-            } else if (lower.includes('namaskar')) {
-                document.getElementById('rcpt-category').value = 'Namaskar';
-            } else if (lower.includes('sadharan')) {
-                document.getElementById('rcpt-category').value = 'Sadharan';
-            }
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Amount (Written in Words)</label>
+            <input type="text" id="amountWords" placeholder="e.g. One Thousand Five Hundred Rupees Only" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
 
-            // 2. Extract Numbers (Amounts)
-            const numberMatches = rawText.match(/(?:(?:rs\.?|inr|\$)\s*)?([0-9]+(?:,[0-9]+)*(?:\.[0-9]{2})?)/gi);
-            if (numberMatches) {
-                const cleanNums = numberMatches
-                    .map(n => n.replace(/[^0-9.]/g, ''))
-                    .filter(n => parseFloat(n) > 0);
-                if (cleanNums.length > 0) {
-                    document.getElementById('rcpt-amount-num').value = cleanNums[cleanNums.length - 1];
-                }
-            }
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Phone Number (E.164 with Country Code)</label>
+              <input type="text" id="phoneNumber" placeholder="+919876543210" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Delivery Channel</label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-500">
+                  <input type="radio" name="channel" value="whatsapp" checked class="text-indigo-600">
+                  <span class="text-xs font-medium">WhatsApp</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-500">
+                  <input type="radio" name="channel" value="sms" class="text-indigo-600">
+                  <span class="text-xs font-medium">SMS</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
-            // 3. Extract Dates (DD/MM/YYYY or YYYY-MM-DD formats)
-            const dateMatch = rawText.match(/\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b/);
-            if (dateMatch) {
-                const parsedDate = new Date(dateMatch[0]);
-                if (!isNaN(parsedDate.getTime())) {
-                    document.getElementById('rcpt-date').value = parsedDate.toISOString().split('T')[0];
-                }
-            }
+          <div class="flex gap-3 pt-2">
+            <button id="saveOnlyBtn" onclick="saveReceiptEntry(false)" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+              Save Entry Only
+            </button>
+            <button id="dispatchBtn" onclick="saveReceiptEntry(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-lg transition-colors">
+              Save & Dispatch Bot
+            </button>
+          </div>
 
-            // 4. Look for "Rupees in words" or "Sum of"
-            const wordsMatch = rawText.match(/(?:rupees|sum of|amount of)\s*([a-zA-Z\s]+)(?:only|\.)?/i);
-            if (wordsMatch && wordsMatch[1]) {
-                document.getElementById('rcpt-amount-words').value = wordsMatch[1].trim();
-            }
+          <div id="statusNotification" class="hidden text-xs p-3 rounded-lg mt-3"></div>
+        </div>
+      </div>
 
-            // 5. Look for Name indicators
-            const nameMatch = rawText.match(/(?:received from|name|mr\.|mrs\.|shri)\s*:?\s*([a-zA-Z\s]+)/i);
-            if (nameMatch && nameMatch[1]) {
-                document.getElementById('rcpt-name').value = nameMatch[1].split('\n')[0].trim();
-            }
+    </div>
 
-            ocrProgress.innerText = 'Fields auto-filled. Please review and click Save.';
-        }
+    <!-- Tabular Records Section -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Receipt Book Ledger</h2>
+          <p class="text-xs text-slate-400">Captured records with date, breakdown, and dispatch status</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="exportTableToCSV()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-md border border-slate-600 transition-colors">
+            Export CSV
+          </button>
+          <button onclick="fetchStoredReceipts()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+            Refresh
+          </button>
+        </div>
+      </div>
 
-        // Save Form Data to Local Storage and Table
-        receiptForm.addEventListener('submit', (e) => {
-            e.preventDefault();
+      <div class="overflow-x-auto rounded-lg border border-slate-700">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-700">
+            <tr>
+              <th class="px-4 py-3">Date</th>
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Amount (₹)</th>
+              <th class="px-4 py-3">Amount in Words</th>
+              <th class="px-4 py-3">Category</th>
+              <th class="px-4 py-3">Phone</th>
+              <th class="px-4 py-3 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerTableBody" class="divide-y divide-slate-700/50 bg-slate-800/40">
+            <tr>
+              <td colspan="7" class="px-4 py-6 text-center text-slate-500">Loading ledger records...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-            const record = {
-                id: Date.now(),
-                name: document.getElementById('rcpt-name').value.trim(),
-                date: document.getElementById('rcpt-date').value,
-                amountNum: document.getElementById('rcpt-amount-num').value.trim(),
-                amountWords: document.getElementById('rcpt-amount-words').value.trim(),
-                category: document.getElementById('rcpt-category').value
-            };
+  </div>
 
-            storedReceipts.push(record);
-            localStorage.setItem('community_receipt_records', JSON.stringify(storedReceipts));
-            renderTable();
+  <script>
+    const SUPABASE_URL = "https://omwsgrsctlqrsdnblklk.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; 
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            receiptForm.reset();
-            ocrProgress.innerText = 'Record saved successfully!';
-        });
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("receiptDate").valueAsDate = new Date();
+      fetchStoredReceipts();
+    });
 
-        // Render Table Rows
-        function renderTable() {
-            recordsTbody.innerHTML = '';
+    async function preprocessImage(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
 
-            if (storedReceipts.length === 0) {
-                recordsTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No records saved yet.</td></tr>`;
-                return;
-            }
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
 
-            storedReceipts.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td><strong>${item.name}</strong></td>
-                    <td>${item.date}</td>
-                    <td>${item.amountNum}</td>
-                    <td>${item.amountWords}</td>
-                    <td><span class="badge">${item.category}</span></td>
-                    <td><button class="action-del-btn" onclick="deleteRecord(${item.id})">Delete</button></td>
-                `;
-                recordsTbody.appendChild(tr);
-            });
-        }
+          for (let i = 0; i < data.length; i += 4) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            const threshold = gray < 140 ? 0 : 255;
+            data[i] = threshold;
+            data[i + 1] = threshold;
+            data[i + 2] = threshold;
+          }
 
-        // Delete Row
-        window.deleteRecord = function(id) {
-            storedReceipts = storedReceipts.filter(r => r.id !== id);
-            localStorage.setItem('community_receipt_records', JSON.stringify(storedReceipts));
-            renderTable();
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
         };
+      });
+    }
 
-        // Export to CSV
-        exportCsvBtn.addEventListener('click', () => {
-            if (storedReceipts.length === 0) {
-                alert('No receipt records available to export.');
-                return;
+    async function handleImageSelection(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const previewContainer = document.getElementById("previewContainer");
+      const previewImg = document.getElementById("imagePreview");
+      const progressWrapper = document.getElementById("ocrProgressWrapper");
+      const progressBar = document.getElementById("ocrProgressBar");
+      const percentageText = document.getElementById("ocrPercentage");
+      const statusText = document.getElementById("ocrStatusText");
+
+      previewImg.src = URL.createObjectURL(file);
+      previewContainer.classList.remove("hidden");
+      progressWrapper.classList.remove("hidden");
+      statusText.innerText = "Enhancing receipt ink contrast...";
+
+      try {
+        const processedImageData = await preprocessImage(file);
+
+        const result = await Tesseract.recognize(
+          processedImageData,
+          'eng',
+          {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                const progress = Math.round(m.progress * 100);
+                progressBar.style.width = `${progress}%`;
+                percentageText.innerText = `${progress}%`;
+                statusText.innerText = 'Extracting handwritten & printed text...';
+              }
             }
+          }
+        );
 
-            const headers = ['Name', 'Date', 'Amount (Numbers)', 'Amount (Words)', 'Category'];
-            const rows = storedReceipts.map(r => [
-                `"${r.name.replace(/"/g, '""')}"`,
-                `"${r.date}"`,
-                `"${r.amountNum}"`,
-                `"${r.amountWords.replace(/"/g, '""')}"`,
-                `"${r.category}"`
-            ]);
+        statusText.innerText = 'Scan Complete!';
+        parseExtractedOCRText(result.data.text);
+      } catch (err) {
+        console.error("OCR Failure:", err);
+        statusText.innerText = 'Failed to extract text. You can enter values manually.';
+      }
+    }
 
-            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement('a');
-            link.setAttribute('href', encodedUri);
-            link.setAttribute('download', `receipt_book_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    </script>
+    function parseExtractedOCRText(rawText) {
+      const text = rawText.replace(/\r/g, '');
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // (a) Find Amount in Numbers
+      const amountMatch = text.match(/(?:₹|rs|inr)?\s*(\d{2,7})(?:\s*[\=\:\-]\s*00|\s*[\/\-]\s*)?/i);
+      if (amountMatch && amountMatch[1]) {
+        const numericVal = amountMatch[1];
+        document.getElementById("amountNum").value = numericVal;
+        autoPopulateWords(numericVal);
+      }
+
+      // (b) Find Date
+      const dateMatch = text.match(/\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b/);
+      if (dateMatch) {
+        const parsed = parseDateString(dateMatch[1]);
+        if (parsed) document.getElementById("receiptDate").value = parsed;
+      }
+
+      // (c) Find Category (Excluding Bheta)
+      const catLower = text.toLowerCase();
+      const catSelect = document.getElementById("receiptCategory");
+      if (catLower.includes("building")) {
+        catSelect.value = "Building Fund";
+      } else if (catLower.includes("namaskar")) {
+        catSelect.value = "Namaskar";
+      } else if (catLower.includes("sadharan")) {
+        catSelect.value = "Sadharan";
+      } else if (catLower.includes("jivdaya")) {
+        catSelect.value = "Jivdaya";
+      } else {
+        catSelect.value = "General Donation";
+      }
+
+      // (d) Amount in Words
+      const wordsMatch = text.match(/(?:rupees|rs\.?|words)?[\s\:\.\-]*([a-z\s]+(?:hundred|thousand|lakh|crore|fifty|twenty|ten|only)[a-z\s]*)/i);
+      if (wordsMatch && wordsMatch[1].trim().length > 4) {
+        let cleanWords = wordsMatch[1].replace(/cash|cheque|bank|date/gi, '').trim();
+        if (cleanWords) {
+          document.getElementById("amountWords").value = cleanWords;
+        }
+      }
+
+      // (e) Name detection
+      const namePattern = /(?:sh[\/\.]?smt[\/\.]?|received from|name)[\s\:\.\-]+([A-Za-z\s]{3,35})/i;
+      const nameMatch = text.match(namePattern);
+      if (nameMatch && nameMatch[1]) {
+        document.getElementById("recipientName").value = cleanName(nameMatch[1]);
+      } else {
+        const candidateLine = lines.find(l => 
+          /(?:shri|kumar|singh|sharma|patel)/i.test(l) &&
+          !/mandal|colony|branch|sant/i.test(l)
+        );
+        if (candidateLine) {
+          document.getElementById("recipientName").value = cleanName(candidateLine);
+        }
+      }
+    }
+
+    function cleanName(str) {
+      return str.replace(/[\.\:\_\-]/g, '').trim();
+    }
+
+    function parseDateString(str) {
+      const parts = str.split(/[\/\-\.]/);
+      if (parts.length === 3) {
+        let [d, m, y] = parts;
+        if (y.length === 2) y = "20" + y;
+        return `${y.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+      return null;
+    }
+
+    function autoPopulateWords(numStr) {
+      const num = parseInt(numStr, 10);
+      if (isNaN(num) || num <= 0) return;
+      const currentWordsField = document.getElementById("amountWords");
+      if (!currentWordsField.value) {
+        currentWordsField.value = convertNumberToWords(num) + " Rupees Only";
+      }
+    }
+
+    function convertNumberToWords(n) {
+      const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+      if (n === 0) return "Zero";
+      function numToWordsHelper(val) {
+        let str = "";
+        if (val >= 10000000) {
+          str += numToWordsHelper(Math.floor(val / 10000000)) + " Crore ";
+          val %= 10000000;
+        }
+        if (val >= 100000) {
+          str += numToWordsHelper(Math.floor(val / 100000)) + " Lakh ";
+          val %= 100000;
+        }
+        if (val >= 1000) {
+          str += numToWordsHelper(Math.floor(val / 1000)) + " Thousand ";
+          val %= 1000;
+        }
+        if (val >= 100) {
+          str += numToWordsHelper(Math.floor(val / 100)) + " Hundred ";
+          val %= 100;
+        }
+        if (val > 0) {
+          if (val < 20) str += units[val] + " ";
+          else {
+            str += tens[Math.floor(val / 10)] + " " + units[val % 10] + " ";
+          }
+        }
+        return str.trim();
+      }
+      return numToWordsHelper(n);
+    }
+
+    async function saveReceiptEntry(triggerDispatch) {
+      const name = document.getElementById("recipientName").value.trim();
+      const date = document.getElementById("receiptDate").value;
+      const amountNum = document.getElementById("amountNum").value.trim();
+      const amountWords = document.getElementById("amountWords").value.trim();
+      const category = document.getElementById("receiptCategory").value;
+      const phone = document.getElementById("phoneNumber").value.trim();
+      const channel = document.querySelector('input[name="channel"]:checked').value;
+
+      if (!name || !amountNum) {
+        showStatus("Name and Amount are required.", "error");
+        return;
+      }
+
+      if (triggerDispatch && !phone) {
+        showStatus("A valid phone number is required to dispatch notification.", "error");
+        return;
+      }
+
+      let sid = null;
+      let status = triggerDispatch ? "Dispatching..." : "Saved";
+
+      if (triggerDispatch) {
+        try {
+          const messageBody = `Hello ${name},\n\nWe have received your payment of ₹${amountNum} (${amountWords}) towards ${category}.\nDate: ${date}\n\nThank you!`;
+          const { data: botRes, error: botErr } = await supabase.functions.invoke("send-profile-bot", {
+            body: { channel, to: phone, message: messageBody }
+          });
+          if (botErr) throw botErr;
+          sid = botRes?.sid || null;
+          status = "Dispatched";
+        } catch (err) {
+          console.warn("Twilio Bot Dispatch warning:", err.message);
+          status = "Failed Dispatch";
+        }
+      }
+
+      const receiptRecord = {
+        recipient_name: name,
+        receipt_date: date,
+        amount: parseFloat(amountNum),
+        amount_words: amountWords,
+        category: category,
+        phone: phone || "N/A",
+        channel: channel,
+        sid: sid,
+        status: status,
+        created_at: new Date().toISOString()
+      };
+
+      const { error: dbError } = await supabase.from("receipts").insert([receiptRecord]);
+      if (dbError) {
+        console.warn("Database insert failed, caching locally:", dbError.message);
+        const stored = JSON.parse(localStorage.getItem("receipt_ledger") || "[]");
+        stored.push(receiptRecord);
+        localStorage.setItem("receipt_ledger", JSON.stringify(stored));
+      }
+
+      showStatus(`Receipt saved successfully! (${status})`, "success");
+      fetchStoredReceipts();
+      resetFormFields();
+    }
+
+    async function fetchStoredReceipts() {
+      const tbody = document.getElementById("ledgerTableBody");
+
+      const { data, error } = await supabase
+        .from("receipts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      let records = data || [];
+      if (error || records.length === 0) {
+        records = JSON.parse(localStorage.getItem("receipt_ledger") || "[]").reverse();
+      }
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">No receipt records recorded yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = records.map(item => `
+        <tr class="dashboard-row border-b border-slate-700/50 cursor-default">
+          <td class="px-4 py-3 text-slate-400 font-mono text-[11px]">${item.receipt_date || new Date(item.created_at).toLocaleDateString()}</td>
+          <td class="px-4 py-3 font-medium text-white">${item.recipient_name}</td>
+          <td class="px-4 py-3 font-semibold text-emerald-400">₹${Number(item.amount).toLocaleString('en-IN')}</td>
+          <td class="px-4 py-3 text-slate-300 italic text-[11px]">${item.amount_words || '—'}</td>
+          <td class="px-4 py-3">
+            <span class="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${getCategoryBadge(item.category)}">
+              ${item.category}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-slate-400 font-mono text-[11px]">${item.phone || 'N/A'}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="text-[10px] uppercase font-bold tracking-wider ${item.status === 'Dispatched' ? 'text-indigo-400' : 'text-slate-400'}">
+              ${item.status || item.channel || 'Saved'}
+            </span>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function getCategoryBadge(cat) {
+      switch (cat) {
+        case "Building Fund": return "bg-amber-950/70 text-amber-300 border border-amber-800";
+        case "Namaskar": return "bg-purple-950/70 text-purple-300 border border-purple-800";
+        case "Sadharan": return "bg-blue-950/70 text-blue-300 border border-blue-800";
+        case "Jivdaya": return "bg-emerald-950/70 text-emerald-300 border border-emerald-800";
+        default: return "bg-slate-700 text-slate-300";
+      }
+    }
+
+    function resetFormFields() {
+      document.getElementById("recipientName").value = "";
+      document.getElementById("amountNum").value = "";
+      document.getElementById("amountWords").value = "";
+      document.getElementById("phoneNumber").value = "";
+      document.getElementById("receiptFileInput").value = "";
+      document.getElementById("previewContainer").classList.add("hidden");
+      document.getElementById("ocrProgressWrapper").classList.add("hidden");
+    }
+
+    function exportTableToCSV() {
+      const records = JSON.parse(localStorage.getItem("receipt_ledger") || "[]");
+      if (records.length === 0) {
+        alert("No ledger data available to export.");
+        return;
+      }
+      const headers = ["Date", "Name", "Amount", "Amount in Words", "Category", "Phone", "Status"];
+      const rows = records.map(r => [
+        `"${r.receipt_date || ''}"`,
+        `"${r.recipient_name}"`,
+        r.amount,
+        `"${r.amount_words || ''}"`,
+        `"${r.category}"`,
+        `"${r.phone}"`,
+        `"${r.status || ''}"`
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `receipt_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function showStatus(msg, type) {
+      const box = document.getElementById("statusNotification");
+      box.classList.remove("hidden", "bg-emerald-950/60", "text-emerald-300", "border-emerald-700", "bg-rose-950/60", "text-rose-300", "border-rose-700");
+      if (type === "success") {
+        box.classList.add("bg-emerald-950/60", "text-emerald-300", "border", "border-emerald-700");
+      } else {
+        box.classList.add("bg-rose-950/60", "text-rose-300", "border", "border-rose-700");
+      }
+      box.innerText = msg;
+    }
+  </script>
 </body>
 </html>
